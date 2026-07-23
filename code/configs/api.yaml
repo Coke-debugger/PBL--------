@@ -3,6 +3,8 @@ model: deepseek-v4-flash-ascend
 model_env: USTC_LLM_MODEL
 max_tokens: 2048
 temperature: 0.3
+# 二次修订单次生成的 max_tokens：章节级补写用，4096 足够且不会因装不下而截断毁教案。
+refine_max_tokens: 4096
 base_url: https://api.llm.ustc.edu.cn/v1
 # 请通过环境变量提供密钥，不要将 API Key 写入此文件。
 api_key_env: USTC_LLM_API_KEY

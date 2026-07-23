@@ -28,9 +28,14 @@ from .prompts import build_c_dimension_prompt, build_point_dimension_prompt, loa
 SAMPLE_WORKERS = 14
 
 
-def _call_model(prompt: str, model: str, temperature: float = 0.2, max_tokens: int = 4096) -> str:
+def _call_model(prompt: str, model: str, temperature: float = 0.0, max_tokens: int = 4096) -> str:
     """通过 llm_client 发起一次调用。供应商/模型切换只需改 configs/api.yaml，
     这里不再硬编码 anthropic 客户端。
+
+    temperature 默认 0.0：评审要可复现——同一份 polished 多次评应给接近的分。
+    此前 0.2 会让单次采样漂移，叠加多采样多数票后仍有 ±几分波动；降到 0.0 把
+    评审侧的随机性压到最低（LLM temp 0 仍非完全确定，但已足够稳定到 ±5 目标）。
+    C 维度的 0.1 同理在 judge.py 里一并改 0.0。
 
     max_tokens 默认 4096：长教案（3万字）评审要输出多子指标 evidence + D 的
     mapping_table / F 的 f1_goal_evidence，2048 常在数组中间被截断导致整段

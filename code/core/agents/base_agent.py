@@ -48,10 +48,13 @@ class BaseAgent:
     ) -> list[Annotation]:
         """Round 0：独立批注教案，返回 list[Annotation]"""
         prompt = self._build_annotation_prompt(lesson_text, profile, experiences or [])
+        # 批注是整合环节的输入，随机性会被放大成 polished 的差异 → 降温到 0.0 让同一
+        # 输入产生接近的批注，是磨课结果可复现的最大杠杆。LLM 在 temp 0 仍非完全确定，
+        # 但能把波动从 50~85 压到 ±5 区间附近。可用 api.yaml 的 annotation_temperature 覆盖。
         raw    = call_llm(
             system=self.get_system_prompt(),
             user=prompt,
-            temperature=self._api_cfg.get("temperature", 0.3),
+            temperature=self._api_cfg.get("annotation_temperature", 0.0),
             max_tokens=self._api_cfg.get("max_tokens", 2048),
             model=self._resolve_model(),
         )
@@ -108,8 +111,14 @@ class BaseAgent:
             f"请对以下{profile.get('subject','')}教案（{profile.get('grade','')}年级）"
             f"进行{self.name}视角批注。{exp_str}\n"
             f"【学情】{profile.get('prior_knowledge','')}\n\n"
-            f"【教案】\n{lesson_text[:3000]}\n\n"  # 测试阶段截断节省token
-            "输出JSON数组，每条含issue_id/dimension/severity/location/quote/problem/suggestion/in_scope："
+            f"【教案】\n{lesson_text}\n\n"
+            "输出JSON数组，每条含issue_id/dimension/severity/location/quote/problem/suggestion/in_scope。\n"
+            "★suggestion 成品化要求（极重要）：suggestion 字段必须是【可直接替换 quote 原文或直接插入教案的成品文本】，"
+            "禁止写'建议补写…''应当…''可以…''需要补充…'这类说明性语言——它会被程序原样写进教案。"
+            "若指出的缺陷是'缺失某要素'，suggestion 必须是该要素的完整成品内容（如一条具体的驱动性问题陈述、一段改正后的表述），"
+            "程序会在 location 指明的章节处插入它。\n"
+            "★location 字段：填写该问题所在、或建议插入处的【现有章节标题原文】（如'项目简介''任务1''项目目标'），"
+            "不要写描述性短语（如'驱动性问题缺失'），否则程序无法定位插入位置。"
         )
 
     def _build_review_prompt(

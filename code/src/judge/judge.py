@@ -173,7 +173,8 @@ class Judge:
 
         def _c_sample(i: int):
             model = _model_for("C")
-            raw = _call_model(c_prompt, model=model, temperature=0.1)
+            # C 维度温度 0.0：与其他维度一致，保证评审可复现（见 sampling._call_model）。
+            raw = _call_model(c_prompt, model=model, temperature=0.0)
             try:
                 return _parse_json_object(raw)
             except (ValueError, json.JSONDecodeError):

@@ -147,6 +147,14 @@ def main() -> int:
     draft_text, modifications = result
     emit_progress("integrate", "completed", f"整合完成，共形成 {len(modifications)} 条修改")
     logger.info(f"  修改条数: {len(modifications)}")
+    # 落实度提示：有多少条批注因 quote 定位失败而改为按章节插入（已写入教案，非静默丢失）。
+    insert_fallbacks = getattr(integrator, "insert_fallbacks", [])
+    if insert_fallbacks:
+        emit_progress(
+            "integrate", "running",
+            f"其中 {len(insert_fallbacks)} 条建议未能精确定位原文，已按章节插入教案（补写类修改）。",
+        )
+        logger.info(f"  按章节插入的补写类修改: {len(insert_fallbacks)} 条")
     if not modifications:
         logger.error("modifications 为空，退出")
         return 1

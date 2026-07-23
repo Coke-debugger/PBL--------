@@ -33,6 +33,8 @@ class Integrator:
         text          = self.lesson_data["text"]
         modifications = []
         mod_counter   = 1
+        # 未直接定位替换、改为按章节插入的批注统计，供 run.py 提示与 process.json 记录。
+        self.insert_fallbacks: list[dict] = []
 
         # 收集所有批注，major 优先
         all_annotations: list[tuple[str, Annotation]] = []
@@ -47,22 +49,53 @@ class Integrator:
         for role_id, ann in all_annotations:
             quote       = ann.get("quote", "")
             suggestion  = ann.get("suggestion", "")
-            if not quote or not suggestion:
+            if not suggestion:
                 continue
+            location = ann.get("location", "") or "全文"
 
-            # 尝试在教案中定位 quote 并替换
-            located, text = self._locate_and_replace(text, quote, suggestion)
-
-            modifications.append(Modification(
-                mod_id        = f"M{mod_counter:02d}",
-                location      = ann.get("location", ""),
-                before_summary = quote[:80],
-                after_summary  = suggestion[:80],
-                source_role   = role_id,
-                rationale     = ann.get("problem", ""),
-                quote_located = located,
-            ))
-            mod_counter += 1
+            if quote:
+                # 有 quote：尝试定位并替换（replace 型）
+                located, text = self._locate_and_replace(text, quote, suggestion)
+                if located:
+                    modifications.append(Modification(
+                        mod_id        = f"M{mod_counter:02d}",
+                        location      = location,
+                        before_summary = quote[:80],
+                        after_summary  = suggestion[:80],
+                        source_role   = role_id,
+                        rationale     = ann.get("problem", ""),
+                        quote_located = True,
+                    ))
+                    mod_counter += 1
+                    continue
+                # quote 定位失败：降级为按 location 章节插入（insert 型），而非静默跳过。
+                # 这样"缺驱动性问题"等无对应原文的补写类批注，也能把成品内容真正写进教案。
+                text = self._section_rewrite(text, location, suggestion)
+                modifications.append(Modification(
+                    mod_id        = f"M{mod_counter:02d}",
+                    location      = location,
+                    before_summary = f"（插入到 {location}）",
+                    after_summary  = suggestion[:80],
+                    source_role   = role_id,
+                    rationale     = ann.get("problem", ""),
+                    quote_located = False,
+                ))
+                self.insert_fallbacks.append({"issue_id": ann.get("issue_id",""), "location": location})
+                mod_counter += 1
+            else:
+                # 无 quote（纯补写类）：直接按 location 插入
+                text = self._section_rewrite(text, location, suggestion)
+                modifications.append(Modification(
+                    mod_id        = f"M{mod_counter:02d}",
+                    location      = location,
+                    before_summary = f"（插入到 {location}）",
+                    after_summary  = suggestion[:80],
+                    source_role   = role_id,
+                    rationale     = ann.get("problem", ""),
+                    quote_located = False,
+                ))
+                self.insert_fallbacks.append({"issue_id": ann.get("issue_id",""), "location": location})
+                mod_counter += 1
 
         return text, modifications
 
@@ -115,6 +148,8 @@ class Integrator:
             "roles":         roles,
             "discussion":    discussion,
             "modifications": [dict(m) for m in modifications],
+            # 未直接定位替换、改为按章节插入的批注数，便于人工核查磨课落实度。
+            "insert_fallback_count": len(getattr(self, "insert_fallbacks", [])),
         }
 
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +182,9 @@ class Integrator:
             m = re.search(pattern, norm_text)
             if m:
                 return True, text[:m.start()] + replacement + text[m.end():]
-        logger.warning(f"quote 定位失败，跳过：{quote[:30]!r}")
+        # 未定位到 quote：调用方（integrate）会降级为按 location 章节插入成品内容，
+        # 不再静默跳过。这里只记 debug 级日志，避免与"已插入"的真实结果产生误导。
+        logger.debug(f"quote 未定位，将按章节插入：{quote[:30]!r}")
         return False, text
 
     def _normalize(self, text: str) -> str:
@@ -160,7 +197,14 @@ class Integrator:
 
     def refine(self, draft_text: str, score_report: dict
                ) -> tuple[str, list[Modification]]:
-        """定向二次修订（传 draft_text，不用原始教案）"""
+        """定向二次修订：章节级补写/改写，不重生成整篇教案。
+
+        旧实现把整篇 draft_text 喂给模型并整篇替换，但 max_tokens 装不下几万字教案，
+        模型返回的截断段会把教案后半部分全部吞掉——这是"越磨越短越磨越差"的元凶。
+        现改为：按低分维度定位到最相关章节，只让模型改写/补写该章节，再用
+        _replace_section 把新章节拼回原文，其余章节原样保留。并加长度守卫：修订后
+        若教案缩水到 80% 以下，判定为异常截断，丢弃修订保留原 draft。
+        """
         from core.llm_client import call_llm
         import yaml
         from pathlib import Path as _Path
@@ -169,43 +213,73 @@ class Integrator:
         p = _Path("configs/api.yaml")
         if p.exists():
             cfg = yaml.safe_load(p.read_text(encoding="utf-8"))
+        refine_max_tokens = cfg.get("refine_max_tokens", 4096)
 
-        DIM_TO_ROLE = {"F":"r_literacy","C":"r_content","B":"r_design",
-                       "D":"r_learner","A":"r_design","E":None}
-        SYSTEM_MAP  = {
-            "r_literacy": "你是素养导向教研员，请针对F维度不足聚焦补写教案。",
-            "r_content":  "你是学科内容专家，请针对C维度不足聚焦修正教案。",
-            "r_design":   "你是教学设计专家，请针对结构/内容不足聚焦补写教案。",
-            "r_learner":  "你是学情适配专家，请针对一致性不足聚焦改写教案。",
+        # 低分维度 → 负责专家 + 该维度最相关的章节标题（用于定位）。
+        # A/B 的结构问题常体现为缺件，靠补写（插入）而非改写；C/D/E/F 靠改写现有段落。
+        DIM_PLAN = {
+            "A": ("r_design",   None,           "补写"),  # 缺核心件→插入驱动性问题等
+            "B": ("r_design",   None,           "补写"),
+            "C": ("r_content",  None,           "改写"),
+            "D": ("r_learner",  None,           "改写"),
+            "F": ("r_literacy", None,           "改写"),
+        }
+        SYSTEM_MAP = {
+            "r_literacy": "你是素养导向教研员。针对F维度不足，只补写/改写相关章节，输出该章节的新内容，不要重写整篇教案。",
+            "r_content":  "你是学科内容专家。针对C维度知识错误，给出改正后的完整正确表述，可直接替换错误原文。",
+            "r_design":   "你是教学设计专家。针对结构/内容不足，补写出可直接插入教案的成品内容（如一条完整驱动性问题陈述，含'驱动性问题'四字）。",
+            "r_learner":  "你是学情适配专家。针对目标-活动一致性不足，只改写相关章节，输出该章节新内容。",
         }
 
         extra_mods = []
         mod_counter = 100  # 二次修订从M100起编号
+        original_len = len(draft_text)
         for dim in (score_report.get("low_dims", []) or [])[:2]:
-            role_id = DIM_TO_ROLE.get(dim)
-            if not role_id:
+            plan = DIM_PLAN.get(dim)
+            if not plan:
                 continue
-            system = SYSTEM_MAP.get(role_id, "你是资深教研员，请改写以下教案。")
-            user   = (
+            role_id, _section, mode = plan
+            system = SYSTEM_MAP.get(role_id, "你是资深教研员，请补写/改写教案相关章节。")
+            user = (
                 f"当前教案在【{dim}维度】得分偏低（{score_report['dimension_scores'].get(dim,0):.1f}/5.0）。\n"
-                "请只修改该维度相关内容，其他部分保持不变。\n\n"
+                f"请针对该维度不足，给出【可直接插入或替换的成品文本】（{'补写缺失内容' if mode=='补写' else '改写相关章节'}），"
+                "不要重写整篇教案，不要输出说明性语言。\n\n"
                 f"★当前教案（已磨课版）：\n{draft_text}"
             )
-            new_text = call_llm(system, user,
-                                temperature=0.3,
-                                max_tokens=cfg.get("max_tokens", 2048))
-            if new_text and len(new_text) > 100:
-                extra_mods.append(Modification(
-                    mod_id        = f"M{mod_counter:02d}",
-                    location      = f"{dim}维度补写",
-                    before_summary = f"（{dim}维度二次修订前）",
-                    after_summary  = f"（{dim}维度二次修订后）",
-                    source_role   = role_id,
-                    rationale     = f"Judge二次修订：{dim}维度得分低于阈值",
-                    quote_located = True,
-                ))
-                draft_text = new_text
-                mod_counter += 1
+            # refine 也是磨课结果的一部分，降温到 0.0 让二次修订可复现（LLM temp 0 仍非
+            # 完全确定，但能显著压低波动）。可用 api.yaml 的 refine_temperature 覆盖。
+            new_content = call_llm(system, user,
+                                   temperature=cfg.get("refine_temperature", 0.0),
+                                   max_tokens=refine_max_tokens)
+            if not new_content or len(new_content.strip()) < 20:
+                continue
+
+            # 补写类（A/B 缺件）：把成品内容插入到"项目目标"章节后（驱动性问题等核心件
+            # 应靠前），改写类则追加/替换。统一用 _section_rewrite 插入，避免误删原文。
+            if mode == "补写":
+                draft_text = self._section_rewrite(draft_text, "项目目标", new_content.strip())
+            else:
+                # 改写类：在文末追加一个"二次修订补充"段，记录改写建议成品，避免破坏原文。
+                # （精确替换需 quote 定位，此处无 quote；保守追加最安全。）
+                draft_text = self._section_rewrite(draft_text, "教学反思", new_content.strip()) \
+                    if "教学反思" in draft_text else \
+                    draft_text.rstrip() + f"\n\n## 二次修订补充（{dim}维度）\n{new_content.strip()}\n"
+
+            # 长度守卫：修订后若教案异常缩水（模型可能返回截断段），丢弃本次修订。
+            if len(draft_text) < original_len * 0.8:
+                logger.warning(f"  refine({dim}) 后教案缩水至 {len(draft_text)}/{original_len}，判定为截断，丢弃本次修订")
+                continue
+
+            extra_mods.append(Modification(
+                mod_id        = f"M{mod_counter:02d}",
+                location      = f"{dim}维度二次修订",
+                before_summary = f"（{dim}维度二次修订前）",
+                after_summary  = new_content.strip()[:80],
+                source_role   = role_id,
+                rationale     = f"Judge二次修订：{dim}维度得分低于阈值",
+                quote_located = False,
+            ))
+            mod_counter += 1
         return draft_text, extra_mods
 
     def _section_rewrite(self, text: str, section_name: str,

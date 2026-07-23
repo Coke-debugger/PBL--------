@@ -5,7 +5,7 @@ pipeline:
   enable_argument:    false   # Phase 3 才开启
   enable_chair:       false   # Phase 2 才开启
   enable_judge:       true
-  enable_refine:      false
+  enable_refine:      true   # 评审后对低分维度做章节级二次修订（旧版整篇重生成会截断毁教案，已改为按章节补写+长度守卫）
   enable_monitor:     false
   enable_experience:  false
   enable_bias_audit:  false
@@ -24,9 +24,13 @@ pipeline:
   timeouts:
     round0:    300   # 4个并行，测试阶段宽松
     integrate:  30
+    refine:    240   # 二次修订单维度预算 4 分钟（章节级补写，比整篇重生成快）
     # Judge 评分超时分级：完整多采样评审超 judge_full 秒 → 回退快速模式；
     # 快速模式超 judge_fast 秒 → 回退纯规则兜底。保证 scores.json 一定产出。
     # pro 模型单次 60~120s，6 维度并发约 5/6 维度在 6 分钟内跑完，最后一个维度
     # 常拖到 8~9 分钟，故完整评审预算放宽到 10 分钟，争取一次跑出真实模型分。
     judge_full: 600   # 完整评审预算 10 分钟
     judge_fast: 300   # 快速模式预算 5 分钟
+
+  # 二次修订单次生成的 max_tokens：章节级补写，4096 足够且不会因装不下而截断毁教案。
+  refine_max_tokens: 4096

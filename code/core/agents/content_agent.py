@@ -33,7 +33,11 @@ class ContentAgent(BaseAgent):
         import json
         return (
             f"请校验以下{profile.get('subject','')}教案的知识准确性。\n\n"
-            f"【教案】\n{lesson_text[:3000]}\n\n"
+            f"【教案】\n{lesson_text}\n\n"
             "找出所有知识性错误（公式/方程式/计算/事实），"
-            "输出JSON数组，每条含issue_id/dimension/severity/location/quote/problem/suggestion/in_scope："
+            "输出JSON数组，每条含issue_id/dimension/severity/location/quote/problem/suggestion/in_scope。\n"
+            "★suggestion 成品化要求（极重要）：suggestion 必须是【改正后的完整正确表述】（含正确公式/方程式/数据/结论），"
+            "程序会用它直接替换 quote 中的错误原文。禁止只写'此处有误''建议修正''应改为…'这类说明性语言——"
+            "它会被原样写进教案。例如 quote 是错误结论'酥油比例40%-50%最佳'，suggestion 应写改正后的完整结论句。\n"
+            "★location 字段：填写错误所在【现有章节标题原文】（如'任务1''项目目标'），不要写描述性短语。"
         )
