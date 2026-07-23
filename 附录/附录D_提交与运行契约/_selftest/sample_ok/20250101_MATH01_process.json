@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "student_id": "20250101",
+    "sample_id": "MATH01",
+    "timestamp": "2026-07-12T15:30:00+08:00"
+  },
+  "roles": [
+    { "role_id": "r_literacy", "name": "素养导向教研员", "expertise": "课标素养目标行为化、思维显性化设计" },
+    { "role_id": "r_subject", "name": "学科内容专家", "expertise": "数学概念准确性、例题与变式设计" },
+    { "role_id": "r_learner", "name": "学情适配专家", "expertise": "开放度四档调适、认知负荷评估" },
+    { "role_id": "r_chair", "name": "主持人", "expertise": "主持与整合、分歧仲裁" }
+  ],
+  "discussion": [
+    { "round": 1, "role_id": "r_literacy", "content": "原教案目标 1 仅写'培养数学抽象素养'，属贴标签，建议行为化改写为'能从折扣情境抽象出不等式模型并解释各量含义'。", "refers_to": null },
+    { "round": 1, "role_id": "r_subject", "content": "例题 1 原解答第二步移项误作 3x>5，属重大知识性错误，必须订正并补齐检验步骤；另建议增加负系数变式以覆盖难点。", "refers_to": null },
+    { "round": 2, "role_id": "r_learner", "content": "支持 r_literacy 的行为化改写；但按给定学情（运算基础中等偏弱），探究环节开放度应降一档，配结构化学习单作半开放脚手架。", "refers_to": "r1:r_literacy" },
+    { "round": 2, "role_id": "r_subject", "content": "质疑 r_learner：学习单若把列式步骤全部给出会削弱建模素养训练，建议只固定五步框架、留空关键格。", "refers_to": "r2:r_learner" },
+    { "round": 3, "role_id": "r_chair", "content": "裁定：采纳目标行为化改写与例题订正；开放度分歧折中——采用五步框架留空关键格的半开放学习单，作为附录内联。", "refers_to": ["r2:r_learner", "r2:r_subject"] }
+  ],
+  "modifications": [
+    {
+      "mod_id": "M01",
+      "location": "教学目标",
+      "before_summary": "目标 1：培养学生数学抽象素养",
+      "after_summary": "目标 1：能从购物折扣情境中抽象出一元一次不等式模型并解释各量的实际含义",
+      "source_role": "r_literacy",
+      "rationale": "原目标贴标签无行为描述，按义教课标素养语言行为化改写（round 1 提出，round 3 采纳）"
+    },
+    {
+      "mod_id": "M02",
+      "location": "教学过程·例题巩固",
+      "before_summary": "例题 1 解答第二步 3x-2>7 移项误作 3x>5，且无检验",
+      "after_summary": "订正为 3x>9, x>3，补齐取值检验步骤",
+      "source_role": "r_subject",
+      "rationale": "移项符号错误属重大知识性错误，按 G2 义务修复而非删除"
+    },
+    {
+      "mod_id": "M03",
+      "location": "教学过程·例题巩固",
+      "before_summary": "（新增）",
+      "after_summary": "新增负系数变式 -2x+5>=1，显性处理不等号反向难点",
+      "source_role": "r_subject",
+      "rationale": "原教案难点'负数除法反向'无对应例题支撑，补变式使难点有突破设计"
+    },
+    {
+      "mod_id": "M04",
+      "location": "附录：探究学习单",
+      "before_summary": "（新增）",
+      "after_summary": "新增五步框架留空关键格的半开放探究学习单，与环节二数据直接耦合",
+      "source_role": "r_learner",
+      "rationale": "给定学情运算基础中等偏弱，开放度降一档；框架留空方案系 r_learner 与 r_subject 分歧经主持人仲裁的折中（round 3）"
+    }
+  ]
+}

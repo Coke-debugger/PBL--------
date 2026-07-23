@@ -1,0 +1,32 @@
+pipeline:
+  # Phase 1（当前阶段）：4专家并行批注 → 直接输出，无互评无仲裁
+  enable_round0:      true
+  enable_round1:      false   # Phase 2 才开启
+  enable_argument:    false   # Phase 3 才开启
+  enable_chair:       false   # Phase 2 才开启
+  enable_judge:       true
+  enable_refine:      false
+  enable_monitor:     false
+  enable_experience:  false
+  enable_bias_audit:  false
+  enable_shapley:     false
+
+  active_roles:
+    - r_literacy
+    - r_content
+    - r_learner
+    - r_design
+
+  judge_threshold: 75.0
+  judge_model: deepseek-v4-pro      # 精确模型：用于 C(内容准确性)/F(核心) 维度采样
+  judge_fast_model: deepseek-v4-flash-ascend  # 快速模型：用于 A/B/D/E 维度采样，大幅提速
+
+  timeouts:
+    round0:    300   # 4个并行，测试阶段宽松
+    integrate:  30
+    # Judge 评分超时分级：完整多采样评审超 judge_full 秒 → 回退快速模式；
+    # 快速模式超 judge_fast 秒 → 回退纯规则兜底。保证 scores.json 一定产出。
+    # pro 模型单次 60~120s，6 维度并发约 5/6 维度在 6 分钟内跑完，最后一个维度
+    # 常拖到 8~9 分钟，故完整评审预算放宽到 10 分钟，争取一次跑出真实模型分。
+    judge_full: 600   # 完整评审预算 10 分钟
+    judge_fast: 300   # 快速模式预算 5 分钟

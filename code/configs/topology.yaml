@@ -1,0 +1,9 @@
+topology:
+  round1_order:
+    - r_literacy
+    - r_content
+    - r_learner
+    - r_design
+  round1_visibility: sequential
+  max_rounds: 1
+  convergence_eps: 0.1

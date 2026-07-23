@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "student_id": "20250102",
+    "sample_id": "PHY01"
+  },
+  "roles": [
+    { "role_id": "r_subject", "name": "学科内容专家" },
+    { "role_id": "r_chair", "name": "主持人", "expertise": "主持与整合" }
+  ],
+  "discussion": [
+    { "round": 1, "role_id": "r_subject", "content": "位移公式书写有误，建议订正。", "refers_to": null },
+    { "round": 2, "role_id": "r_chair", "content": "同意订正。", "refers_to": "r1:r_subject" }
+  ],
+  "modifications": []
+}

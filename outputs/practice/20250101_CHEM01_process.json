@@ -1,0 +1,123 @@
+{
+  "meta": {
+    "student_id": "20250101",
+    "sample_id": "CHEM01",
+    "timestamp": "2026-07-18T00:41:51.199412"
+  },
+  "roles": [
+    {
+      "role_id": "r_literacy",
+      "name": "素养导向教研员",
+      "expertise": "课标素养目标行为化、思维显性化设计"
+    },
+    {
+      "role_id": "r_content",
+      "name": "学科内容专家",
+      "expertise": "学科概念准确性、公式方程式校验"
+    },
+    {
+      "role_id": "r_learner",
+      "name": "学情适配专家",
+      "expertise": "目标-活动-评价一致性、开放度调适"
+    },
+    {
+      "role_id": "r_design",
+      "name": "教学设计专家",
+      "expertise": "PBL结构完整性、教学过程可执行性"
+    }
+  ],
+  "discussion": [
+    {
+      "round": 1,
+      "role_id": "r_literacy",
+      "content": "[F·major] 项目目标第1条：目标去行为化：了解/知道，无行为动词+情境+可观察结果",
+      "refers_to": null
+    },
+    {
+      "round": 1,
+      "role_id": "r_literacy",
+      "content": "[F·major] 项目目标第2条：目标为通用知识清单，换任何化学课都成立，无本课特异性",
+      "refers_to": null
+    },
+    {
+      "round": 1,
+      "role_id": "r_content",
+      "content": "[C·major] 任务一化学方程式：方程式错误：完全燃烧应生成CO2，原式写成CO",
+      "refers_to": null
+    },
+    {
+      "round": 1,
+      "role_id": "r_content",
+      "content": "[C·major] 任务一质量比：质量比计算错误：C25H52=352，38*O2=1216，正确比1216:352",
+      "refers_to": null
+    },
+    {
+      "round": 1,
+      "role_id": "r_learner",
+      "content": "[D·minor] 项目目标：认知层次与学情不匹配：已学燃烧条件但目标停留在了解层",
+      "refers_to": null
+    },
+    {
+      "round": 1,
+      "role_id": "r_design",
+      "content": "[A·major] 全文：PBL课型缺少成果交流核心结构件，A维度封顶2.0，F6=0",
+      "refers_to": null
+    }
+  ],
+  "modifications": [
+    {
+      "mod_id": "M01",
+      "location": "项目目标第1条",
+      "before_summary": "了解应急蜡烛的性能要求，知道工艺生产的一般流程",
+      "after_summary": "能从露营停电情境提出蜡烛燃烧时间需求，转化为可量化目标(>=8h)，拆解影响变量",
+      "source_role": "r_literacy",
+      "rationale": "目标去行为化：了解/知道，无行为动词+情境+可观察结果",
+      "quote_located": true
+    },
+    {
+      "mod_id": "M02",
+      "location": "项目目标第2条",
+      "before_summary": "了解化学反应的物质变化、反应条件、反应现象和元素守恒等知识",
+      "after_summary": "基于蜡烛燃烧原理拆解变量，通过实验数据构建燃烧调控系统思维模型",
+      "source_role": "r_literacy",
+      "rationale": "目标为通用知识清单，换任何化学课都成立，无本课特异性",
+      "quote_located": true
+    },
+    {
+      "mod_id": "M03",
+      "location": "任务一化学方程式",
+      "before_summary": "50CO",
+      "after_summary": "25CO_2（完全燃烧产物）",
+      "source_role": "r_content",
+      "rationale": "方程式错误：完全燃烧应生成CO2，原式写成CO",
+      "quote_located": true
+    },
+    {
+      "mod_id": "M04",
+      "location": "任务一质量比",
+      "before_summary": "质量比大于等于",
+      "after_summary": "修正为：石蜡与氧气质量比=1216:352",
+      "source_role": "r_content",
+      "rationale": "质量比计算错误：C25H52=352，38*O2=1216，正确比1216:352",
+      "quote_located": true
+    },
+    {
+      "mod_id": "M05",
+      "location": "全文",
+      "before_summary": "项目简介",
+      "after_summary": "任务三后新增成果交流节：AB演讲+双轨评价量规",
+      "source_role": "r_design",
+      "rationale": "PBL课型缺少成果交流核心结构件，A维度封顶2.0，F6=0",
+      "quote_located": true
+    },
+    {
+      "mod_id": "M06",
+      "location": "项目目标",
+      "before_summary": "了解化学反应的物质变化",
+      "after_summary": "改为：应用燃烧三要素分析蜡烛燃烧时间影响因素，与已学知识形成进阶",
+      "source_role": "r_learner",
+      "rationale": "认知层次与学情不匹配：已学燃烧条件但目标停留在了解层",
+      "quote_located": false
+    }
+  ]
+}

@@ -1,0 +1,921 @@
+{
+  "total": 54.88,
+  "dimension_scores": {
+    "A": 2.0,
+    "B": 3.12,
+    "E": 3.0,
+    "D": 3.5,
+    "F": 4.17,
+    "C": 0.0
+  },
+  "low_dims": [
+    "C",
+    "A"
+  ],
+  "low_confidence_dims": [],
+  "details": {
+    "A": {
+      "dimension": "A",
+      "sub_indicator_scores": {
+        "A1": 2,
+        "A2": 2,
+        "A3": 2
+      },
+      "evidence": [
+        {
+          "sub_indicator": "A1",
+          "quote": "项目目标、项目导引、项目活动（任务1-3）、项目成果",
+          "judgment": "满足",
+          "note": "核心件（项目目标、项目导引、项目活动、项目成果）全部齐全，且每个部分均有详细内容。",
+          "quote_verified": false
+        },
+        {
+          "sub_indicator": "A2",
+          "quote": "项目简介、评价量规、反思总结、KWL表等",
+          "judgment": "满足",
+          "note": "非核心件（项目简介、评价量规、反思量表、KWL表等）全部出现，且内容完整。",
+          "quote_verified": false
+        },
+        {
+          "sub_indicator": "A3",
+          "quote": "项目简介中具体描述应急蜡烛背景；项目目标具体到燃烧时长、棉线股数等；任务中详细实验步骤、数据记录表",
+          "judgment": "满足",
+          "note": "所有结构件均包含本课特定实体内容（如石蜡、酥油、棉线参数、燃烧实验等），无模板化空壳。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "A1",
+          "quote": "项目简介、项目目标、项目导引、任务1-3、项目成果、评价量规",
+          "judgment": "满足",
+          "note": "核心件（项目简介、目标、导引、任务、成果、评价）齐全，每件均有实质内容。",
+          "quote_verified": false
+        },
+        {
+          "sub_indicator": "A2",
+          "quote": "KWL自我评价表、资料卡片、实验记录表、反思量表、合作讨论生态监控表",
+          "judgment": "满足",
+          "note": "非核心件（学生活动表格、资料卡片、教师指导语等）丰富且齐全，无缺失。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "A3",
+          "quote": "应急蜡烛为什么能持续燃烧那么长时间？为什么都是'矮胖子'？",
+          "judgment": "满足",
+          "note": "所有结构件均包含本课特定实体（如应急蜡烛设计、酥油比例、棉线股数等），无模板化空壳。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "A1",
+          "quote": "1. 针对露营场景游客需求（如防风、便携、安全），将抽象需求转化为可量化目标",
+          "judgment": "满足",
+          "note": "项目目标明确具体，属于核心件，且内容充实",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "A2",
+          "quote": "蜡烛，是一种日常照明工具。在文艺作品中，蜡烛有牺牲、奉献的象征意义。",
+          "judgment": "满足",
+          "note": "项目简介包含背景、文化意义等，非核心件齐全",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "A3",
+          "quote": "实验探究：石蜡和棉线都是可燃物，蜡烛燃烧时烧的是棉线还是石蜡呢？",
+          "judgment": "满足",
+          "note": "所有结构件均包含本课特定实体内容，无模板化空壳",
+          "quote_verified": true
+        }
+      ],
+      "evidence_verified_ratio": 0.6666666666666666,
+      "issues": [],
+      "n_valid_samples": 3,
+      "a_core_check_override": true,
+      "a_core_missing": [
+        "驱动性问题"
+      ]
+    },
+    "B": {
+      "dimension": "B",
+      "sub_indicator_scores": {
+        "B1": 2,
+        "B2": 1,
+        "B3": 0,
+        "B4": 2
+      },
+      "evidence": [
+        {
+          "sub_indicator": "B1",
+          "quote": "【交流研讨】请阅读罐装蜡烛的国家标准，指出高质量应急蜡烛应该具备哪些性能？",
+          "judgment": "满足",
+          "note": "教案中大量环节包含师生双边活动描述，如交流研讨、实验探究、动手实践等，占比超过80%。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B2",
+          "quote": "5分钟时间完成，混合均匀之后小心移走酒精灯熄灭",
+          "judgment": "满足",
+          "note": "多数环节标注了时间（如5分钟、10分钟）和组织形式（如2人一组、小组合作），关键实验有材料清单（如棉线股数、石蜡、酥油等）。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B3",
+          "quote": "交流讨论：市面上卖的应急蜡烛往往加入酥油。大家根据已有的知识，大胆分析，为什么会往石蜡里面加酥油？",
+          "judgment": "不满足",
+          "note": "教案中未出现针对关键问题绑定本课概念或典型错误的预设回答，仅有学生活动引导，缺乏教师预设的应对内容。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B4",
+          "quote": "决策矩阵：评估维度、说明、权重、方案A/B/C/D",
+          "judgment": "满足",
+          "note": "教案提供了与主活动直接耦合的支架，如KWL表格、决策矩阵、实验设计流程图等，非通用模板。",
+          "quote_verified": false
+        },
+        {
+          "sub_indicator": "B1",
+          "quote": "请同学们进行小组讨论，组内交流",
+          "judgment": "满足",
+          "note": "多数环节有师生双边活动描述，如小组研讨、实验探究、AB演讲等",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B2",
+          "quote": "5分钟时间完成，2人一组",
+          "judgment": "部分满足",
+          "note": "部分环节有时间标注和组织形式，但多数环节缺少明确时间，材料清单仅关键实验有",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B3",
+          "quote": "有的小组考虑到需要能保持较长时间燃烧",
+          "judgment": "不满足",
+          "note": "预设内容通用化，未绑定本课概念或典型错误，缺乏针对性预设回答",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B4",
+          "quote": "合作讨论生态监控表",
+          "judgment": "满足",
+          "note": "提供了与主活动直接耦合的支架，如实验设计流程图、决策矩阵等",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B1",
+          "quote": "请同学们进行组内交流，每组设置以下角色",
+          "judgment": "满足",
+          "note": "教案中多数环节有师生双边活动描述，如小组交流、实验探究、AB演讲等，占比超过80%",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B2",
+          "quote": "5分钟时间完成，混合均匀之后小心移走酒精灯熄灭",
+          "judgment": "部分满足",
+          "note": "部分环节有明确时间（如5分钟、10分钟），但多数环节（如交流研讨、自主思考）未标注时间，组织形式基本都有，整体约半数环节有时间标注",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B3",
+          "quote": "有的小组考虑到需要能保持较长时间燃烧，有的小组提到要设计防风罩",
+          "judgment": "不满足",
+          "note": "虽有预设学生想法，但内容通用化，未绑定本课概念或典型错误，且无针对关键问题的预设回答",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "B4",
+          "quote": "推荐大家采用下表呈现方式进行蜡烛小样制作和硬度检测",
+          "judgment": "满足",
+          "note": "提供了与主活动直接耦合的支架（如实验记录表、决策矩阵），至少1件直接针对任务数据",
+          "quote_verified": true
+        }
+      ],
+      "evidence_verified_ratio": 0.9166666666666666,
+      "issues": [
+        {
+          "quote": "交流讨论：市面上卖的应急蜡烛往往加入酥油。大家根据已有的知识，大胆分析，为什么会往石蜡里面加酥油？",
+          "problem": "缺乏对关键问题的预设回答，未绑定本课概念或典型错误，教师难以预判学生反应并针对性引导。",
+          "severity": "major"
+        },
+        {
+          "quote": "有的小组考虑到需要能保持较长时间燃烧",
+          "problem": "预设回答内容通用，未针对本课概念或典型错误进行设计，缺乏可执行的应对策略",
+          "severity": "major"
+        },
+        {
+          "quote": "5分钟时间完成，2人一组",
+          "problem": "仅部分环节标注时间，多数环节（如交流研讨、任务策划）缺少时间分配，影响可执行性",
+          "severity": "minor"
+        },
+        {
+          "quote": "（多数环节无时间标注，如“交流研讨”“自主思考”）",
+          "problem": "B2可执行颗粒度不足：大量环节缺少时间标注，教师难以精确把控课堂节奏",
+          "severity": "minor"
+        },
+        {
+          "quote": "（无预设学生典型错误回答）",
+          "problem": "B3预设与应对缺失：未针对关键问题（如黑烟成因、棉线作用）预设学生可能出现的概念错误或典型回答，不利于教师即时诊断学情",
+          "severity": "major"
+        }
+      ],
+      "n_valid_samples": 3
+    },
+    "E": {
+      "dimension": "E",
+      "sub_indicator_scores": {
+        "E1": 2,
+        "E2": 0,
+        "E3": 1,
+        "E4": 1,
+        "E5": 2
+      },
+      "evidence": [
+        {
+          "sub_indicator": "E1",
+          "quote": "蜡烛，是一种日常照明工具。",
+          "judgment": "满足",
+          "note": "全文无歧义表述，语言清晰",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E2",
+          "quote": "蜡烛，是一种日常照明工具。唐代诗人有...",
+          "judgment": "不满足",
+          "note": "项目简介与项目导引开头大段重复，属于明显重复冗余",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E3",
+          "quote": "添加酥油调控石蜡的融化范围；起酥油是精炼的动植物油脂",
+          "judgment": "部分满足",
+          "note": "同一概念“酥油”与“起酥油”混用，存在1-2处漂移",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E4",
+          "quote": "## 项目导引下用###【项目背景】；## 项目策划下用#### 活动1",
+          "judgment": "部分满足",
+          "note": "同级标题下子标题层级不一致（### vs ####），存在跳档",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E5",
+          "quote": "在解决困惑之前，首先要给同学们点赞",
+          "judgment": "满足",
+          "note": "环节间有自然过渡，行文连贯",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E1",
+          "quote": "在蜡烛燃烧反应中，可燃物和氧气本质上是化学反应的反应物",
+          "judgment": "满足",
+          "note": "整体表述清晰，无歧义",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E2",
+          "quote": "在本次活动中，我们需要对蜡烛的整体结构进行进一步的优化统整。",
+          "judgment": "部分满足",
+          "note": "任务3活动1开头两段内容重复，先提出需要优化统整，紧接着又重复说明",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E3",
+          "quote": "我们需要添加酥油调控石蜡的融化范围",
+          "judgment": "部分满足",
+          "note": "术语'酥油'与'起酥油'混用，未统一",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E4",
+          "quote": "### 任务1：调控石蜡成分配比及用量并制作蜡烛模型",
+          "judgment": "满足",
+          "note": "编号层级体系一致，无跳档",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "E5",
+          "quote": "应急蜡烛作为等待救援的物资，需要燃烧24-36小时，我们可以先按36小时来设计。",
+          "judgment": "满足",
+          "note": "环节间有自然过渡，行文连贯",
+          "quote_verified": true
+        }
+      ],
+      "evidence_verified_ratio": 1.0,
+      "issues": [
+        {
+          "quote": "蜡烛，是一种日常照明工具。唐代诗人有...（项目简介与项目导引重复）",
+          "problem": "项目简介与项目导引开头大段重复，属于明显冗余",
+          "severity": "major"
+        },
+        {
+          "quote": "添加酥油调控石蜡的融化范围；起酥油是精炼的动植物油脂",
+          "problem": "同一概念“酥油”与“起酥油”混用，术语不一致",
+          "severity": "minor"
+        },
+        {
+          "quote": "## 项目导引下用###【项目背景】；## 项目策划下用#### 活动1",
+          "problem": "同级标题下子标题层级不一致，存在跳档",
+          "severity": "minor"
+        },
+        {
+          "quote": "在本次活动中，我们需要对蜡烛的整体结构进行进一步的优化统整。",
+          "problem": "任务3活动1开头两段内容重复，先提出需要优化统整，紧接着又重复说明为了优化统整可以怎么做",
+          "severity": "minor"
+        },
+        {
+          "quote": "我们需要添加酥油调控石蜡的融化范围",
+          "problem": "术语'酥油'与'起酥油'混用，未统一",
+          "severity": "minor"
+        }
+      ],
+      "n_valid_samples": 2
+    },
+    "D": {
+      "dimension": "D",
+      "sub_indicator_scores": {
+        "D1": 2,
+        "D2": 2,
+        "D3": 2,
+        "D4": 1,
+        "D5": 0
+      },
+      "evidence": [
+        {
+          "sub_indicator": "D1",
+          "quote": "将抽象需求转化为可量化目标",
+          "judgment": "满足",
+          "note": "目标1对应活动'明确高质量应急蜡烛性能特点'和'深入探究影响蜡烛燃烧的因素'，映射完整",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D2",
+          "quote": "实验探究：一氧化碳传感器",
+          "judgment": "满足",
+          "note": "化学方程式难点通过传感器实验和AB演讲突破，变量控制难点有方法导引和多次实验设计",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D3",
+          "quote": "在下一个任务中，我们需要对棉线的股数和长度进行精细调控",
+          "judgment": "满足",
+          "note": "任务1产出（石蜡参数）被任务2使用，任务2产出被任务3使用，多处实质承接",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D4",
+          "quote": "用海报/PPT/视频等方式展示你的最终版设计方案",
+          "judgment": "部分满足",
+          "note": "作业（项目成果）与目标一致，但教案未设计板书，仅其一一致",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D5",
+          "quote": "之前我们学习了燃烧的三要素",
+          "judgment": "满足",
+          "note": "活动从已知燃烧条件出发，逐步引入化学方程式和变量控制，难度与开放度适配学情",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D1",
+          "quote": "掌握'设计调控'任务类型的问题解决思路",
+          "judgment": "满足",
+          "note": "目标1对应活动3中提炼优化调控类任务思路，映射完整",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D2",
+          "quote": "假定石蜡的平均化学式为C25H52，氧气和石蜡的质量比至少为多少",
+          "judgment": "不满足",
+          "note": "学生未学化学方程式，该难点无脚手架或直观化设计",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D3",
+          "quote": "确定了酥油的最佳添加比例为40%",
+          "judgment": "满足",
+          "note": "任务1产出被任务2直接使用（基于40%酥油配比），另有多次承接",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D4",
+          "quote": "完成一份思维导图",
+          "judgment": "满足",
+          "note": "作业要求与目标2'构建燃烧调控的系统模型'一致",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D5",
+          "quote": "未学化学方程式",
+          "judgment": "不满足",
+          "note": "活动要求计算化学方程式质量比，与学情明显不符",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D1",
+          "quote": "将抽象需求转化为可量化目标",
+          "judgment": "满足",
+          "note": "目标1有对应活动：项目导引中调查分析明确需求，后续任务中变量拆解与实验设计均围绕此目标",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D2",
+          "quote": "设计实验确定酥油合适的添加量",
+          "judgment": "满足",
+          "note": "难点如变量控制、系统模型构建均有对应突破设计：对照实验、AB演讲、思维导图等",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D3",
+          "quote": "在项目导引中策划了项目任务，同时总结形成了设计调控的问题解决思路",
+          "judgment": "满足",
+          "note": "前环节产出（问题解决思路）被后续任务1、2、3多次使用，实质承接≥2处",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D4",
+          "quote": "KWL自我评价",
+          "judgment": "部分满足",
+          "note": "作业（KWL、反思量表、评价量规）与本课目标一致，但教案未提供板书设计，仅作业一致",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "D5",
+          "quote": "假定石蜡的平均化学式为C25H52，氧气和石蜡的质量比至少为多少",
+          "judgment": "不满足",
+          "note": "学情明确‘未学化学方程式’，但教案直接要求基于化学方程式计算质量比，超出学生已有知识，无明确呼应",
+          "quote_verified": true
+        }
+      ],
+      "evidence_verified_ratio": 1.0,
+      "issues": [
+        {
+          "quote": "（无板书设计）",
+          "problem": "教案中未包含板书设计，导致D4评分降为1分",
+          "severity": "minor"
+        },
+        {
+          "quote": "假定石蜡的平均化学式为C25H52，氧气和石蜡的质量比至少为多少",
+          "problem": "学生未学化学方程式，直接要求计算质量比，缺乏脚手架，难度超出学情",
+          "severity": "major"
+        },
+        {
+          "quote": "假定石蜡的平均化学式为C25H52，氧气和石蜡的质量比至少为多少",
+          "problem": "学情明确未学化学方程式，但教案直接使用化学方程式进行定量计算，活动难度与学情不匹配",
+          "severity": "major"
+        },
+        {
+          "quote": "（无板书设计）",
+          "problem": "教案未提供板书设计，导致D4仅作业一致，未达到‘均一致’",
+          "severity": "minor"
+        }
+      ],
+      "n_valid_samples": 3,
+      "mapping_table": [
+        {
+          "goal_id": "目标1",
+          "goal_quote": "将抽象需求转化为可量化目标",
+          "activity_quote": "分析应急蜡烛的使用情境和目的",
+          "activity_section": "项目导引",
+          "eval_quote": null,
+          "valid": true
+        },
+        {
+          "goal_id": "目标2",
+          "goal_quote": "从环境（氧气浓度）和体系（烛芯、蜡组分）拆解变量",
+          "activity_quote": "探究蜡烛中棉线的作用、设计烛芯股数",
+          "activity_section": "任务2",
+          "eval_quote": null,
+          "valid": true
+        },
+        {
+          "goal_id": "目标3",
+          "goal_quote": "应用数学、技术等多学科知识，设计测定蜡烛燃烧速度实验",
+          "activity_quote": "测量蜡烛燃烧36小时，需要多少石蜡",
+          "activity_section": "任务1活动2",
+          "eval_quote": null,
+          "valid": true
+        },
+        {
+          "goal_id": "目标4",
+          "goal_quote": "促使学生积极参与小组合作，进行自我评价和生生互评",
+          "activity_quote": "制定评价量规",
+          "activity_section": "项目导引",
+          "eval_quote": "反思量表",
+          "valid": true
+        }
+      ],
+      "mapping_validity_ratio": 1.0
+    },
+    "F": {
+      "dimension": "F",
+      "sub_indicator_scores": {
+        "F1": 1,
+        "F2": 1,
+        "F3": 2,
+        "F4": 2,
+        "F5": 2,
+        "F6": 2
+      },
+      "evidence": [
+        {
+          "sub_indicator": "F1",
+          "quote": "将抽象需求转化为可量化目标...进行变量拆解和筛选，进一步设计实验...掌握'设计调控'任务类型的问题解决思路",
+          "judgment": "满足",
+          "note": "目标1有具体行为描述（转化、拆解、设计、掌握），且后续活动有实质展开，非贴标签。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F2",
+          "quote": "假定石蜡的平均化学式为C25H52，氧气和石蜡的质量比至少为多少的时候能够使石蜡完全燃烧",
+          "judgment": "部分满足",
+          "note": "涉及化学方程式计算，学生未学化学方程式，存在深度偏差；但整体项目主题符合初中课标化学与社会·跨学科实践。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F3",
+          "quote": "AB演讲：分享你建构的认识化学反应的系统思维模型；阐述利用该模型如何认识蜡烛燃烧反应",
+          "judgment": "满足",
+          "note": "有专门的思路外显环节（AB演讲、独立思考），且问题链递进（从燃烧条件到变量调控到系统模型），符合成体系思维设计。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F4",
+          "quote": "在露营地停电的时候，应急蜡烛能够提供光源...假如你是应急蜡烛的设计师...制作一款安全性能达标且燃烧性能良好的应急蜡烛",
+          "judgment": "满足",
+          "note": "情境（应急蜡烛设计）贯穿项目导引、任务1-3及成果展示，非装饰；存在整合性主活动（如任务1中调控石蜡成分配比并制作模型）。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F1",
+          "quote": "将抽象需求转化为可量化目标（燃烧时间 ≥ 8 小时、倾倒不自燃）",
+          "judgment": "满足",
+          "note": "目标使用具体行为动词，且后续活动有对应实验设计支撑，非贴标签。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F2",
+          "quote": "假定石蜡的平均化学式为 C25H52，氧气和石蜡的质量比至少为多少",
+          "judgment": "部分满足",
+          "note": "涉及化学方程式计算，学生未学化学方程式，深度略超学段，但教师给出方程式，基本匹配课标燃烧主题。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F3",
+          "quote": "AB演讲：分享你建构的认识化学反应的系统思维模型",
+          "judgment": "满足",
+          "note": "有专门环节让学生表达思路，且问题链递进（从燃烧原理到变量调控），思路外显设计完整。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F4",
+          "quote": "在露营地停电的时候，应急蜡烛能够提供光源",
+          "judgment": "满足",
+          "note": "情境贯穿项目导引、任务1-3及成果展示，非装饰；存在整合性主活动（如调控石蜡成分配比实验）。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F5",
+          "quote": "小组内进行研讨，尽可能详细的设计一款应急蜡烛",
+          "judgment": "满足",
+          "note": "学生自主组织空间（角色分工、自主设计实验），有产出物（设计方案、实验报告），有生成性讨论（深度倾听表格）。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F6",
+          "quote": "评价量规：燃烧时长 ≥ 8 小时，无明显黑烟",
+          "judgment": "满足",
+          "note": "个人成长与问题解决成果分别有量规，水平描述可实际检验（如燃烧时长通过实验测量），双轨评价设计完整。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F1",
+          "quote": "将抽象需求转化为可量化目标...掌握'设计调控'任务类型的问题解决思路",
+          "judgment": "部分满足",
+          "note": "目标有具体行为描述，但未严格使用本学段课标语言（如'化学观念'等），部分表述如'体验工艺生产流程'与课标关联较弱，有贴标签嫌疑。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F2",
+          "quote": "假定石蜡的平均化学式为C25H52...氧气和石蜡的质量比至少为多少",
+          "judgment": "部分满足",
+          "note": "教案引入化学方程式计算，但学情明确'未学化学方程式'，存在明显超纲，深度匹配不足。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F3",
+          "quote": "AB演讲：分享你建构的认识化学反应的系统思维模型...阐述利用该模型如何认识蜡烛燃烧",
+          "judgment": "满足",
+          "note": "有专门的AB演讲环节让学生表达思路，且后续反思、评价量规均要求外显问题解决思路，形成递进问题链。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F4",
+          "quote": "在露营地停电的时候，应急蜡烛能够提供光源...设计一款实用的应急蜡烛",
+          "judgment": "满足",
+          "note": "情境贯穿项目始终：从项目背景、调查分析到任务1-3均围绕应急蜡烛设计展开，有整合性主活动（如调控石蜡配比、棉线实验），非装饰性。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F5",
+          "quote": "小组内进行研讨...角色分工...自主设计实验方案...AB演讲...反思量表",
+          "judgment": "满足",
+          "note": "学生有自主组织空间（小组分工、自主设计实验），有产出物（设计方案、实验报告、思维导图），有生成性讨论（交流研讨、深度倾听）。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F6",
+          "quote": "评价量规：燃烧时长≥8小时...水平描述针对本项目",
+          "judgment": "满足",
+          "note": "个人成长与问题解决成果分别有量规，水平描述可实际检验（如燃烧时长有对应测试活动），且PBL课型双轨评价设计完整。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F1",
+          "quote": "将抽象需求转化为可量化目标...进行变量拆解和筛选，进一步设计实验精细探究要素对蜡烛性能的影响",
+          "judgment": "满足",
+          "note": "项目目标使用课标语言（科学探究、模型建构）且有具体行为描述，活动中有对应证据支撑，无贴标签条目。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F2",
+          "quote": "C25H52 + 38O2 → 25CO2 + 26H2O",
+          "judgment": "部分满足",
+          "note": "教案直接给出化学方程式并要求计算质量比，但学情显示学生未学化学方程式，存在深度偏差，基本匹配但个别超纲。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F3",
+          "quote": "AB演讲：分享你建构的认识化学反应的系统思维模型",
+          "judgment": "满足",
+          "note": "有递进问题链（从燃烧原理到变量调控）和多个思路外显环节（AB演讲、反思量表），符合PBL加强要求。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F4",
+          "quote": "应急蜡烛的设计与制作...在露营地停电的时候，应急蜡烛能够提供光源",
+          "judgment": "部分满足",
+          "note": "情境非装饰且贯穿全程，但任务中教师预设过多（如给出具体实验表格），整合性主活动自主组织空间不足，活动碎片化倾向。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F5",
+          "quote": "组建小组...角色分工...KWL自我评价...交流研讨",
+          "judgment": "部分满足",
+          "note": "有学生自主组织空间（小组合作、角色分工）和产出物（实验报告、设计方案），但全程教师强控制（步骤、表格预设），生成性讨论有限。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F6",
+          "quote": "评价量规：个人成长成果（问题解决思路、模型建构等）和问题解决成果（蜡烛产品、设计方案）",
+          "judgment": "满足",
+          "note": "双轨评价设计完整，量规水平描述可实际检验（如燃烧时长≥8小时有测量活动支撑），符合PBL加强要求。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F1",
+          "quote": "将抽象需求转化为可量化目标...掌握'设计调控'任务类型的问题解决思路",
+          "judgment": "满足",
+          "note": "目标1有具体行为描述，且对应活动有实验设计、变量拆解等证据支撑。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F1",
+          "quote": "形成证据链并构建燃烧调控的系统模型...初步形成认识化学反应的系统思维模型",
+          "judgment": "满足",
+          "note": "目标2有行为描述，AB演讲环节让学生表达模型，有证据。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F1",
+          "quote": "学习设计实验，形成控制变量的科学探究的一般流程和方法",
+          "judgment": "满足",
+          "note": "目标3有行为描述，任务1、2中实验设计环节有证据。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F1",
+          "quote": "促使学生积极参与小组合作，进行自我评价和生生互评...提高自我保护意识",
+          "judgment": "部分满足",
+          "note": "目标4中小组合作、评价有活动证据，但'提高自我保护意识'缺乏具体活动支撑，属贴标签。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F2",
+          "quote": "假定石蜡的平均化学式为C25H52...氧气和石蜡的质量比至少为多少",
+          "judgment": "部分满足",
+          "note": "涉及化学方程式计算，学生未学化学方程式，深度略超初中课标，但教师直接给出方程式，基本匹配。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F3",
+          "quote": "AB演讲：分享你建构的认识化学反应的系统思维模型",
+          "judgment": "满足",
+          "note": "有专门环节让学生表达思路，且问题链递进（从燃烧条件到棉线作用到设计调控），思路外显充分。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F4",
+          "quote": "在露营地停电的时候，应急蜡烛能够提供光源...",
+          "judgment": "满足",
+          "note": "情境贯穿项目导引、任务1-3，任务围绕应急蜡烛设计展开，有整合性主活动（如调控石蜡配比、棉线实验）。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F5",
+          "quote": "小组内进行研讨，尽可能详细的设计一款应急蜡烛",
+          "judgment": "满足",
+          "note": "学生有自主组织空间（角色分工、自主设计实验），有产出物（设计方案、实验报告、思维导图），有生成性讨论（交流研讨、AB演讲）。",
+          "quote_verified": true
+        },
+        {
+          "sub_indicator": "F6",
+          "quote": "评价量规：水平1-3描述具体，如'燃烧时长≥8小时'",
+          "judgment": "满足",
+          "note": "有个人成长和问题解决双轨量规，水平划分针对本项目，可实际检验（如燃烧时长有实验测量支撑）。",
+          "quote_verified": true
+        }
+      ],
+      "evidence_verified_ratio": 1.0,
+      "issues": [
+        {
+          "quote": "假定石蜡的平均化学式为 C25H52，氧气和石蜡的质量比至少为多少",
+          "problem": "学生未学化学方程式，教案直接给出化学方程式并用于定量计算，可能超出学段认知负荷，属于深度偏差。",
+          "severity": "minor"
+        },
+        {
+          "quote": "假定石蜡的平均化学式为C25H52...氧气和石蜡的质量比至少为多少",
+          "problem": "学生未学化学方程式，教案中引入化学方程式计算明显超纲，不符合学段课标要求。",
+          "severity": "major"
+        },
+        {
+          "quote": "将抽象需求转化为可量化目标...掌握'设计调控'任务类型的问题解决思路",
+          "problem": "部分素养目标未使用本学段课标语言（如'化学观念'等），存在贴标签现象，影响F1评分。",
+          "severity": "minor"
+        },
+        {
+          "quote": "C25H52 + 38O2 → 25CO2 + 26H2O",
+          "problem": "学生未学化学方程式，教案直接使用并计算质量比，超出初中课标要求，存在深度偏差。",
+          "severity": "major"
+        },
+        {
+          "quote": "实验编号1-9...酥油比例10%-90%...总质量13g",
+          "problem": "教师直接给出完整实验方案和表格，学生自主设计空间被压缩，活动碎片化，削弱了整合性主活动的挑战性。",
+          "severity": "minor"
+        },
+        {
+          "quote": "每小组领取不同股数棉线（6股、12股、18股、24股、48股、96股）",
+          "problem": "实验变量由教师预设，学生缺乏自主拆解和选择变量的机会，全程强控制，学生主体性不足。",
+          "severity": "minor"
+        },
+        {
+          "quote": "提高自我保护意识",
+          "problem": "目标4中'提高自我保护意识'缺乏具体活动支撑，属于贴标签，影响F1评分。",
+          "severity": "minor"
+        },
+        {
+          "quote": "假定石蜡的平均化学式为C25H52...氧气和石蜡的质量比至少为多少",
+          "problem": "学生未学化学方程式，教案直接给出复杂方程式并计算，略超初中课标深度，可能造成学习困难。",
+          "severity": "minor"
+        }
+      ],
+      "n_valid_samples": 5,
+      "f1_goal_evidence": [
+        {
+          "goal_quote": "将抽象需求转化为可量化目标设计实验掌握设计调控任务类型的问题解决思路",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "基于蜡烛燃烧原理构建燃烧调控的系统模型初步形成认识化学反应的系统思维模型",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "通过探究学习设计实验形成控制变量的科学探究的一般流程和方法",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "通过对应急蜡烛设计方案进行迭代自我评价和生生互评提高自我保护意识",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "针对露营场景游客需求将抽象需求转化为可量化目标掌握设计调控任务类型的问题解决思路",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "基于蜡烛燃烧原理拆解变量形成证据链并构建燃烧调控的系统模型初步形成认识化学反应的系统思维模型",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "通过探究蜡烛中棉线的作用设计实验形成控制变量的科学探究的一般流程和方法",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "通过对应急蜡烛设计方案进行迭代促使学生积极参与小组合作进行自我评价和生生互评提高自我保护意识",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "将抽象需求转化为可量化目标掌握设计调控任务类型的问题解决思路",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "通过探究形成控制变量的科学探究的一般流程和方法进一步构建系统与模型比例与定量的跨学科大概念",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "通过对应急蜡烛设计方案进行迭代促使学生积极参与小组合作提高自我保护意识",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "形成证据链并构建燃烧调控的系统模型初步形成认识化学反应的系统思维模型",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "学习设计实验形成控制变量的科学探究的一般流程和方法",
+          "has_evidence": true
+        },
+        {
+          "goal_quote": "促使学生积极参与小组合作进行自我评价和生生互评提高自我保护意识",
+          "has_evidence": true
+        }
+      ]
+    },
+    "C": {
+      "dimension": "C",
+      "score": 0.0,
+      "confirmed_issues": [
+        {
+          "root_cause": "酥油添加比例实验结论与数据矛盾：4、5号样品在55℃渗出酥油，不符合国标要求，但结论认为40%-50%最佳",
+          "error_type": "重大知识性错误",
+          "quote": "发现4、5号样品会往外渗出酥油...所以酥油添加比40%-50%最佳",
+          "location": "任务1·活动1·动手实践",
+          "hit_count": 1
+        },
+        {
+          "root_cause": "密闭空间燃烧蜡烛实验未说明安全措施，存在一氧化碳中毒风险",
+          "error_type": "重大知识性错误",
+          "quote": "将蜡烛放在密闭空间内燃烧",
+          "location": "活动2：深入探究影响蜡烛燃烧的因素，实验探究部分",
+          "hit_count": 1
+        },
+        {
+          "root_cause": "酥油比例实验结论与国标要求矛盾：实验发现4、5号样品（40%、50%酥油）在55℃渗出酥油，不符合国标“55℃不融化”要求，但结论却判定40%-50%为最佳比例，属于知识性错误",
+          "error_type": "重大知识性错误",
+          "quote": "升温至55℃，发现4、5号样品会往外渗出酥油...所以酥油添加比40%-50%最佳",
+          "location": "任务1·活动1·动手实践·测试蜡烛样品的硬度和熔化程度",
+          "hit_count": 1
+        },
+        {
+          "root_cause": "酥油添加比例实验结论与实验现象矛盾，推荐40%-50%不符合国标55℃不融化要求",
+          "error_type": "重大知识性错误",
+          "quote": "升温至55℃，发现4、5号样品会往外渗出酥油...所以酥油添加比40%-50%最佳。",
+          "location": "任务1·活动1·调控蜡烛的成分配比",
+          "hit_count": 1
+        }
+      ],
+      "all_issues": [
+        {
+          "root_cause": "酥油添加比例实验结论与数据矛盾：4、5号样品在55℃渗出酥油，不符合国标要求，但结论认为40%-50%最佳",
+          "quote": "发现4、5号样品会往外渗出酥油...所以酥油添加比40%-50%最佳",
+          "error_type": "重大知识性错误",
+          "location": "任务1·活动1·动手实践"
+        },
+        {
+          "root_cause": "燃烧前一氧化碳ppm值8偏高，不符合典型环境浓度，数据不严谨",
+          "quote": "燃烧前一氧化碳的 ppm 值为 8",
+          "error_type": "一般性不严谨",
+          "location": "项目导引·实验探究"
+        },
+        {
+          "root_cause": "密闭空间燃烧蜡烛实验未说明安全措施，存在一氧化碳中毒风险",
+          "quote": "将蜡烛放在密闭空间内燃烧",
+          "error_type": "重大知识性错误",
+          "location": "活动2：深入探究影响蜡烛燃烧的因素，实验探究部分"
+        },
+        {
+          "root_cause": "酒精灯不能装得过满的原因解释不准确，主要风险是酒精受热膨胀溢出而非爆燃",
+          "quote": "装满酒精之后壶中的酒精蒸汽会过多，这个时候爆燃就有可能了",
+          "error_type": "一般性不严谨",
+          "location": "活动2：深入探究影响蜡烛燃烧的因素，酒精灯原理部分"
+        },
+        {
+          "root_cause": "酥油比例实验结论与国标要求矛盾：实验发现4、5号样品（40%、50%酥油）在55℃渗出酥油，不符合国标“55℃不融化”要求，但结论却判定40%-50%为最佳比例，属于知识性错误",
+          "quote": "升温至55℃，发现4、5号样品会往外渗出酥油...所以酥油添加比40%-50%最佳",
+          "error_type": "重大知识性错误",
+          "location": "任务1·活动1·动手实践·测试蜡烛样品的硬度和熔化程度"
+        },
+        {
+          "root_cause": "酥油添加比例实验结论与实验现象矛盾，推荐40%-50%不符合国标55℃不融化要求",
+          "quote": "升温至55℃，发现4、5号样品会往外渗出酥油...所以酥油添加比40%-50%最佳。",
+          "error_type": "重大知识性错误",
+          "location": "任务1·活动1·调控蜡烛的成分配比"
+        }
+      ],
+      "has_verifiable_content": true,
+      "n_valid_samples": 4
+    }
+  },
+  "manipulation_flags": [],
+  "lesson_type": "PBL",
+  "truncated": true,
+  "judge_version": "db24e747b8de",
+  "judge_mode": "full",
+  "ROB": null
+}

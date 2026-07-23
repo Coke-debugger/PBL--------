@@ -1,0 +1,19 @@
+# Judge 模块的LLM调用配置。换供应商/模型只改这个文件，不用改代码。
+#
+# provider: anthropic | deepseek | openai
+# model:    对应provider下的模型名
+# api_key_env: 从哪个环境变量读取API Key（不允许硬编码key到本文件）
+# base_url: 仅 deepseek/openai 兼容接口需要
+
+provider: openai
+model: deepseek-v4-pro
+max_tokens: 2048
+temperature: 0.3
+base_url: https://api.llm.ustc.edu.cn/v1
+api_key_env: USTC_LLM_API_KEY
+
+# 切到 DeepSeek 示例（性价比高，适合C/F维度5次采样的高调用量场景）：
+# provider: deepseek
+# model: deepseek-chat
+# base_url: https://api.deepseek.com
+# api_key_env: DEEPSEEK_API_KEY
