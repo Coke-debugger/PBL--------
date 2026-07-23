@@ -282,6 +282,119 @@ class Integrator:
             mod_counter += 1
         return draft_text, extra_mods
 
+    # ── 分段聚焦改写（重构核心：Judge 指路 → 专家只改问题所在段落）─────────
+
+    # 低分维度 → 负责专家角色。与 refine 的 DIM_TO_ROLE 同口径。
+    _FOCUSED_DIM_ROLE = {
+        "A": "r_design", "B": "r_design", "C": "r_content",
+        "D": "r_learner", "E": "r_design", "F": "r_literacy",
+    }
+    _FOCUSED_SYSTEM = {
+        "r_design":   "你是教学设计专家。下面给你一个教案章节的当前内容和该章节被发现的具体问题，请只改写这一段，输出该章节的完整新内容。不要解释、不要写'修改为''改为'等说明，第一字就是正文。保留该章节原有的标题层级与编号体系，只修正指出的问题。",
+        "r_content":  "你是学科内容专家。下面给你一个教案章节的当前内容和其中被发现的知识错误，请只改写这一段、改正所有知识错误，输出该章节的完整新内容。不要解释，不要写'此处有误'，直接给改正后的正确表述。保留标题层级与编号，其余正确内容保持不变。",
+        "r_learner":  "你是学情适配专家。下面给你一个教案章节的当前内容和其中被发现的目标-学情不一致问题，请只改写这一段使其适配学情，输出该章节的完整新内容。不要解释，第一字就是正文。保留标题层级与编号。",
+        "r_literacy": "你是素养导向教研员。下面给你一个教案章节的当前内容和其中被发现的素养导向问题，请只改写这一段强化素养落实，输出该章节的完整新内容。不要解释，第一字就是正文。保留标题层级与编号。",
+    }
+
+    def focused_revise(
+        self,
+        lesson_text: str,
+        score_report: dict,
+        sections: list[dict],
+        api_cfg: dict | None = None,
+    ) -> tuple[str, list[Modification]]:
+        """分段聚焦改写：Judge 指出低分维度的具体 issue → 专家只改 issue 所在章节。
+
+        与旧 integrate/refine 的根本区别：
+        - 输入不再是 3 万字全文，而是"该章节内容 + 该 issue 的 problem"，注意力集中、
+          幻觉大降；
+        - 整合用 replace_section 只替换该章节正文，其余章节原样保留，杜绝多专家改同
+          一章节导致编号重复跳档（这是 E 维度暴跌的元凶）；
+        - Judge 的 issues 回流指导专家，评分与专家意见结合，专家不再通读全文找问题。
+
+        sections 由 section_splitter.split_into_sections 产生。每条 issue 在
+        score_report['details'][dim]['issues'] 里，含 quote/problem/severity。
+        """
+        from core.llm_client import call_llm
+        from core.section_splitter import locate_section_for_quote, replace_section
+
+        cfg = api_cfg or {}
+        max_tokens = cfg.get("focused_max_tokens", 4096)
+        temperature = cfg.get("focused_temperature", 0.3)  # 多轮选优要多样性
+
+        text = lesson_text
+        modifications: list[Modification] = []
+        mod_counter = 1
+        # 记录被改过的章节 heading，避免同一章节被多个 issue 反复改写互相覆盖。
+        touched_sections: set[str] = set()
+
+        details = score_report.get("details", {})
+        low_dims = score_report.get("low_dims", []) or []
+        # low_dims 是得分最低的两个维度；聚焦改写优先处理它们的 major issue。
+        # 若某低分维度无可用 issue，回退到该维度所有 issue。
+        for dim in low_dims:
+            role_id = self._FOCUSED_DIM_ROLE.get(dim)
+            if not role_id:
+                continue
+            dim_detail = details.get(dim, {})
+            issues = dim_detail.get("issues", []) or []
+            if not issues:
+                continue
+            # major 优先；最多取 3 条，避免一次改太多章节
+            issues_sorted = sorted(
+                issues, key=lambda x: 0 if x.get("severity") == "major" else 1
+            )[:3]
+            system = self._FOCUSED_SYSTEM.get(
+                role_id, "你是资深教研员。请只改写下面这个章节，输出完整新内容，不要解释。"
+            )
+            for issue in issues_sorted:
+                quote = issue.get("quote", "")
+                problem = issue.get("problem", "")
+                if not problem:
+                    continue
+                sec = locate_section_for_quote(sections, quote) if quote else None
+                if sec is None:
+                    # quote 定位不到：用 heading 粗匹配 issue.location，仍找不到则跳过
+                    # 该 issue（不改），避免误伤。这条 issue 记为未处理，留给 refine。
+                    continue
+                if sec["heading"] in touched_sections:
+                    # 该章节本轮已改过，跳过避免覆盖（其余 issue 下轮或 refine 处理）。
+                    continue
+                section_text = sec["content"].strip()
+                user = (
+                    f"【该章节当前内容】\n{section_text}\n\n"
+                    f"【发现的问题（{dim}维度）】\n{problem}\n\n"
+                    "请只针对这个问题改写上面这个章节，输出该章节的【完整新内容】（不含标题行）。"
+                    "要求：①直接输出正文，第一字就是内容，不要任何说明性语言；"
+                    "②保留原有编号体系与标题层级，只修正指出的问题，其余正确内容保持不变；"
+                    "③若问题是缺某要素，把该要素的成品内容自然补进这段，不要单独写'建议补写'。"
+                )
+                new_content = call_llm(system, user,
+                                       temperature=temperature, max_tokens=max_tokens)
+                if not new_content or len(new_content.strip()) < 10:
+                    continue
+                new_content = new_content.strip()
+                # 长度守卫：若改写后该章节异常缩水（模型可能只返回一句话），跳过避免毁段
+                if section_text and len(new_content) < len(section_text) * 0.4:
+                    logger.warning(
+                        f"  focused_revise({dim}@{sec['heading']}) 改写缩水"
+                        f"({len(new_content)}/{len(section_text)})，跳过"
+                    )
+                    continue
+                text = replace_section(text, sec, new_content)
+                touched_sections.add(sec["heading"])
+                modifications.append(Modification(
+                    mod_id=f"M{mod_counter:02d}",
+                    location=sec["heading"],
+                    before_summary=f"（{dim}维度聚焦改写）" + (quote[:60] if quote else ""),
+                    after_summary=new_content[:80],
+                    source_role=role_id,
+                    rationale=problem[:80],
+                    quote_located=True,
+                ))
+                mod_counter += 1
+        return text, modifications
+
     def _section_rewrite(self, text: str, section_name: str,
                           content: str) -> str:
         """降级策略：在指定章节后插入新内容"""
