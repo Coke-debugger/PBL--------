@@ -242,21 +242,49 @@ def main() -> int:
                     f"  原教案轻量分: {initial_report['total']:.1f}/100，"
                     f"低分维度: {initial_report.get('low_dims')}"
                 )
-                # Step 5b: 章节切分 + 分段聚焦改写
-                emit_progress("integrate", "running", "根据评审意见，专家分段聚焦改写教案…")
-                logger.info("=== Step 5b 分段聚焦改写 ===")
                 sections = split_into_sections(original_text)
                 api_cfg = {}
                 _api_p = Path("configs/api.yaml")
                 if _api_p.exists():
                     api_cfg = yaml.safe_load(_api_p.read_text(encoding="utf-8"))
-                draft_text, modifications = integrator.focused_revise(
-                    original_text, initial_report, sections, api_cfg=api_cfg,
-                )
+
+                # Step 5b: 多轮分段聚焦改写，取最高分。
+                # 单次 LLM 改写不可靠，靠"多轮带随机性 + 选优"保证质量，而非压随机性。
+                # 每轮：focused_revise(temp 0.3 产生多样性) → 轻量复评(n=1)拿该轮分；
+                # 取分数最高那轮的 polished 作为 draft_text，Step6 再对它做一次完整评审。
+                n_rounds = max(1, int(config.get("n_rounds", 1)))
+                logger.info(f"=== Step 5b 分段聚焦改写（{n_rounds} 轮取最好）===")
+                best = {"score": -1.0, "draft": original_text, "mods": []}
+                for r in range(1, n_rounds + 1):
+                    emit_progress(
+                        "integrate", "running",
+                        f"第 {r}/{n_rounds} 轮分段聚焦改写（专家据评审意见改写相关章节）…",
+                    )
+                    r_draft, r_mods = integrator.focused_revise(
+                        original_text, initial_report, sections, api_cfg=api_cfg,
+                    )
+                    if not r_mods:
+                        logger.info(f"  第{r}轮未产出修改，跳过")
+                        continue
+                    # 轻量复评该轮改后教案，拿分数比较（n=1 快速，省成本）
+                    r_report = _run_judge(
+                        judge, r_draft, lesson_type, timeouts,
+                        n_samples_override=1, label=f"第{r}轮复评",
+                    )
+                    r_score = r_report["total"] if r_report else -1.0
+                    logger.info(f"  第{r}轮分: {r_score:.1f}/100（修改 {len(r_mods)} 条）")
+                    if r_score > best["score"]:
+                        best = {"score": r_score, "draft": r_draft, "mods": r_mods}
+                        emit_progress("integrate", "running", f"第{r}轮暂为最优：{r_score:.1f}/100")
+                draft_text, modifications = best["draft"], best["mods"]
                 if not modifications:
-                    # 没改出任何东西：用原教案兜底，避免空 polished
-                    logger.warning("  分段聚焦未产出修改，使用原教案")
+                    logger.warning("  多轮分段聚焦均未产出修改，使用原教案")
                     draft_text = original_text
+                else:
+                    logger.info(
+                        f"  选优完成：最优轮 {best['score']:.1f}/100，"
+                        f"采纳 {len(modifications)} 条修改"
+                    )
         else:
             # 未启用 Judge：回退旧的批注直整合
             result = run_phase("Integrate",
