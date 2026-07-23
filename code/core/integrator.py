@@ -329,15 +329,35 @@ class Integrator:
         touched_sections: set[str] = set()
 
         details = score_report.get("details", {})
-        low_dims = score_report.get("low_dims", []) or []
-        # low_dims 是得分最低的两个维度；聚焦改写优先处理它们的 major issue。
-        # 若某低分维度无可用 issue，回退到该维度所有 issue。
-        for dim in low_dims:
+        dim_scores = score_report.get("dimension_scores", {}) or {}
+        # 必改维度策略（不依赖 low_dims——它基于单次评审分，不准会误判该改的维度）：
+        # C(知识错误)和F(素养核心)无论分高低都必查必改；其余维度分<3.0 才改。
+        # 这样 C 的扣分制根因即使分已较高也会被扫到 issues 并修正，避免"知识错误没改"。
+        MUST_FIX = {"C", "F"}
+        fix_dims = []
+        for d in ["C", "F", "A", "B", "D", "E"]:
+            if d in MUST_FIX or dim_scores.get(d, 5) < 3.0:
+                fix_dims.append(d)
+        for dim in fix_dims:
             role_id = self._FOCUSED_DIM_ROLE.get(dim)
             if not role_id:
                 continue
             dim_detail = details.get(dim, {})
-            issues = dim_detail.get("issues", []) or []
+            # C 维度是扣分制，issues 在 confirmed_issues 字段（结构用 root_cause 而非
+            # problem），且带 error_type 可当 severity。其余维度用 issues 字段。
+            # 统一归一化成 {quote, problem, severity} 形式，供后续定位与提示词用。
+            if dim == "C":
+                raw_issues = dim_detail.get("confirmed_issues", []) or dim_detail.get("all_issues", [])
+                issues = [
+                    {
+                        "quote": it.get("quote", ""),
+                        "problem": it.get("root_cause", "") or it.get("problem", ""),
+                        "severity": "major" if it.get("error_type", "").startswith("重大") else "minor",
+                    }
+                    for it in raw_issues
+                ]
+            else:
+                issues = dim_detail.get("issues", []) or []
             if not issues:
                 continue
             # major 优先；最多取 3 条，避免一次改太多章节

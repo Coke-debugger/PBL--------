@@ -70,12 +70,22 @@ def _run_judge(
             return None
         logger.warning(f"  [{label}] 完整评审超时，回退快速模式: {budget_err}")
         emit_progress("judge", "running", f"[{label}] 完整评审超时，回退快速模式…")
-        return judge.evaluate(
-            text, lesson_type=lesson_type,
-            on_progress=lambda d, done, total, msg: emit_progress("judge", "running", msg),
-            time_budget_seconds=timeouts.get("judge_fast", 240),
-            n_samples_override=1,
-        )
+        try:
+            return judge.evaluate(
+                text, lesson_type=lesson_type,
+                on_progress=lambda d, done, total, msg: emit_progress("judge", "running", msg),
+                time_budget_seconds=timeouts.get("judge_fast", 240),
+                n_samples_override=1,
+            )
+        except Exception as fast_err:
+            logger.warning(f"  [{label}] 快速评审也失败: {fast_err}")
+            return None
+    except Exception as api_err:
+        # API 连接失败/重试耗尽（RuntimeError）等非预算超时：返回 None 让调用方回退，
+        # 而不是让整个磨课流程崩溃。网络恢复后重跑即可。
+        logger.warning(f"  [{label}] 评审调用失败（非预算超时）: {api_err}")
+        emit_progress("judge", "running", f"[{label}] 评审调用失败：{api_err}")
+        return None
 
 
 def _judge_with_fallback(
@@ -222,16 +232,18 @@ def main() -> int:
             lesson_type = lesson_data["structure"].get("course_type", "常规课")
             judge = Judge(lesson_data["profile"], model_pool=_build_judge_pool(config))
 
-            # Step 5a: 轻量评审原教案（快速模式 n_samples=1），拿 low_dims + issues
-            emit_progress("judge", "running", "正在轻量评审原教案，定位待改进的维度与问题…")
-            logger.info("=== Step 5a 轻量评审原教案（定位问题）===")
+            # Step 5a: 完整评审原教案，拿全各维度 issues（含 C 扣分制的根因清单）。
+            # 此前用 n=1 轻量评审，C 维度单次采样常漏 issues → 知识错误抓不到 → 没改。
+            # 改用完整多采样，多花一次完整评审(~2分钟)，换 issues 完整、定位准确。
+            emit_progress("judge", "running", "正在完整评审原教案，定位待改进的维度与问题（约2分钟）…")
+            logger.info("=== Step 5a 完整评审原教案（定位问题）===")
             initial_report = _run_judge(
                 judge, original_text, lesson_type, timeouts,
-                n_samples_override=1, label="首轮轻量",
+                n_samples_override=None, label="首轮定位",
             )
             if initial_report is None:
-                # 轻量评审也失败：回退到旧的批注直整合路径，保证有产出
-                logger.warning("  首轮轻量评审失败，回退批注直整合路径")
+                # 首轮评审失败：回退到旧的批注直整合路径，保证有产出
+                logger.warning("  首轮评审失败，回退批注直整合路径")
                 result = run_phase("Integrate",
                                    lambda: integrator.integrate(),
                                    timeout=timeouts.get("integrate", 30))
@@ -241,8 +253,8 @@ def main() -> int:
                 draft_text, modifications = result
             else:
                 logger.info(
-                    f"  原教案轻量分: {initial_report['total']:.1f}/100，"
-                    f"低分维度: {initial_report.get('low_dims')}"
+                    f"  原教案分: {initial_report['total']:.1f}/100，"
+                    f"各维度: {initial_report.get('dimension_scores')}"
                 )
                 sections = split_into_sections(original_text)
                 api_cfg = {}
