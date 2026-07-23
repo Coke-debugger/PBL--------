@@ -192,6 +192,8 @@ def main() -> int:
     logger.info("=== Step 5 整合修改 ===")
     emit_progress("integrate", "running", "正在整合修改建议…")
 
+    # 磨课前分数（Phase 1 轻量评原教案得到），供 Step9 经验库算 delta；未走该路径时为 None。
+    initial_report = None
     # Phase 2: 使用 verdict 的结构化指令精确替换（保留原路径）
     if is_phase2 and verdict.get("adopted"):
         from core.integrator_phase2 import IntegratorPhase2
@@ -380,14 +382,18 @@ def main() -> int:
     if config.get("enable_experience", False) and score_report:
         try:
             from modules.experience_bank import ExperienceBank
-            # json 已在文件顶部导入；此处若再 `import json`，会把 json 变成本函数
-            # 的局部变量，导致上方 Step 8 的 json.dumps 在该 import "之前"执行时
-            # 抛 UnboundLocalError。
+            # score_before 用磨课前分数：Phase 1 重构路径有 initial_report（轻量评原教案），
+            # 取不到时记 0（经验库内部 delta<=0 不记录，不影响正确性）。
+            score_before = initial_report["total"] if initial_report else 0
             ExperienceBank().update(
                 args.sample_id,
                 json.loads(process_path.read_text(encoding="utf-8")),
-                score_before=0,
+                score_before=score_before,
                 score_after=score_report["total"],
+            )
+            logger.info(
+                f"  经验库更新：before={score_before:.1f} after={score_report['total']:.1f}"
+                f" delta={score_report['total']-score_before:+.1f}"
             )
         except Exception as e:
             logger.warning(f"  经验库更新失败（跳过）: {e}")

@@ -7,7 +7,7 @@ pipeline:
   enable_judge:       true
   enable_refine:      true   # 评审后对低分维度做章节级二次修订（旧版整篇重生成会截断毁教案，已改为按章节补写+长度守卫）
   enable_monitor:     false
-  enable_experience:  false
+  enable_experience:  true   # 启用经验库：磨课后沉淀"提分有效的修改写法"，下次同类教案检索注入专家提示词（专家skills化）
   enable_bias_audit:  false
   enable_shapley:     false
 
