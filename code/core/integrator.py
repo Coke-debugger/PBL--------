@@ -296,6 +296,40 @@ class Integrator:
         "r_literacy": "你是素养导向教研员。下面给你一个教案章节的当前内容和其中被发现的素养导向问题，请只改写这一段强化素养落实，输出该章节的完整新内容。不要解释，第一字就是正文。保留标题层级与编号。",
     }
 
+    @staticmethod
+    def _pick_linked_activity_section(sections: list[dict], touched: set[str]) -> dict | None:
+        """为"目标"类章节挑一个联动改写的"任务/活动"章节。
+
+        D 维度的目标-活动一致性问题：只改目标段会写出"要做X"而活动段无X。挑第一个
+        含"任务"或"活动"的章节联动，让专家一次改两段保持对应。已改过的(touched)跳过。
+        """
+        for sec in sections:
+            if sec["heading"] in touched:
+                continue
+            if any(kw in sec["heading"] for kw in ("任务", "活动")) and sec["content"].strip():
+                return sec
+        return None
+
+    @staticmethod
+    def _parse_two_sections(raw: str) -> tuple[str | None, str | None]:
+        """从专家输出里解析 <<SECTION_A>>...<</SECTION_A>> 和 B 两个块。
+
+        容错：若模型没用标记而是分两段输出，退化按空行分割取前两段。返回 (a, b)。
+        """
+        if not raw:
+            return None, None
+        import re as _re
+        a = _re.search(r"<<SECTION_A>>\s*(.*?)\s*<</SECTION_A>>", raw, _re.DOTALL)
+        b = _re.search(r"<<SECTION_B>>\s*(.*?)\s*<</SECTION_B>>", raw, _re.DOTALL)
+        if a and b:
+            return a.group(1).strip(), b.group(1).strip()
+        # 退化：按双换行分块，取最长的两块当 A/B
+        chunks = [c.strip() for c in _re.split(r"\n{2,}", raw.strip()) if c.strip()]
+        chunks.sort(key=len, reverse=True)
+        if len(chunks) >= 2:
+            return chunks[0], chunks[1]
+        return None, None
+
     def focused_revise(
         self,
         lesson_text: str,
@@ -380,7 +414,52 @@ class Integrator:
                 if sec["heading"] in touched_sections:
                     # 该章节本轮已改过，跳过避免覆盖（其余 issue 下轮或 refine 处理）。
                     continue
+
+                # 多段联动：D 维度的"目标-活动一致性"问题本质是跨章节的——只改目标段
+                # 会在目标里写"要做X"但活动段没有X，反而加剧不一致。当 issue 在"目标"
+                # 类章节时，把第一个"任务/活动"章节一起给专家，让它一次改两段、保持对应。
+                linked_sec = None
+                if dim == "D" and ("目标" in sec["heading"] or "目标" in (quote or "")):
+                    linked_sec = self._pick_linked_activity_section(sections, touched_sections)
+
                 section_text = sec["content"].strip()
+                if linked_sec:
+                    linked_text = linked_sec["content"].strip()
+                    user = (
+                        f"【章节A：{sec['heading']} 当前内容】\n{section_text}\n\n"
+                        f"【章节B：{linked_sec['heading']} 当前内容】\n{linked_text}\n\n"
+                        f"【发现的问题（{dim}维度·目标-活动一致性）】\n{problem}\n\n"
+                        "这个问题需要两段联动修改：在目标段调整目标表述的同时，必须在活动段补上"
+                        "对应的活动设计，保证目标与活动一致，不要只在目标里写要做某事而活动里没有。\n"
+                        "请同时改写这两个章节，按下面格式输出（严格遵守，不要加其他文字）：\n"
+                        f"<<SECTION_A>>\n章节A的完整新内容（不含标题行）\n<</SECTION_A>>\n"
+                        f"<<SECTION_B>>\n章节B的完整新内容（不含标题行）\n<</SECTION_B>>\n"
+                        "要求：①直接输出正文，不要说明性语言；②保留原有编号与标题层级，"
+                        "其余正确内容保持不变；③两段必须对应——目标里提到的活动，活动段要有设计。"
+                    )
+                    raw = call_llm(system, user, temperature=temperature, max_tokens=max_tokens)
+                    new_a, new_b = self._parse_two_sections(raw)
+                    if not new_a or not new_b:
+                        continue
+                    if section_text and len(new_a) < len(section_text) * 0.4:
+                        continue
+                    text = replace_section(text, sec, new_a)
+                    text = replace_section(text, linked_sec, new_b)
+                    touched_sections.add(sec["heading"])
+                    touched_sections.add(linked_sec["heading"])
+                    modifications.append(Modification(
+                        mod_id=f"M{mod_counter:02d}",
+                        location=f"{sec['heading']} + {linked_sec['heading']}",
+                        before_summary=f"（{dim}维度联动改写）" + (quote[:50] if quote else ""),
+                        after_summary=new_a[:80],
+                        source_role=role_id,
+                        rationale=problem[:80],
+                        quote_located=True,
+                    ))
+                    mod_counter += 1
+                    continue
+
+                # 单段改写（C知识错误、F素养等单章节问题）
                 user = (
                     f"【该章节当前内容】\n{section_text}\n\n"
                     f"【发现的问题（{dim}维度）】\n{problem}\n\n"
