@@ -109,11 +109,15 @@ def main() -> int:
     # ── Step 2-4: 圆桌研讨（按 Phase 自动路由）─────────────────────────
     logger.info(f"=== Step 2{'~4' if is_phase2 else ''} 圆桌研讨 ===")
     roundtable = Roundtable(lesson_data, config)
-    rt_result = run_phase(
-        "Roundtable",
-        lambda: roundtable.run(experiences),
-        timeout=sum(timeouts.get(k, 0) for k in ["round0","round1","chair"]) or 300,
-    )
+    # 不用 run_phase 外层超时包整个 roundtable——那会在超时时把已完成的专家批注
+    # 全部丢弃（future.result(timeout) 抛异常，run_round0 的 with 块被强退、不 return）。
+    # 改为直接调 run，让 run_round0 内部 as_completed(timeout) 逐个收：慢的专家超时
+    # 单独失败，已返回的批注保留。
+    try:
+        rt_result = roundtable.run(experiences)
+    except Exception as e:
+        logger.error(f"圆桌研讨异常: {e}")
+        rt_result = None
     if rt_result is None:
         rt_result = {}
 

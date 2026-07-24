@@ -106,7 +106,7 @@ class Roundtable:
         }
 
     def run_round0(self, experiences: list) -> dict:
-        """4 Agent 并行独立批注"""
+        """4 Agent 并行独立批注。超时只让未完成的专家失败，已完成的批注保留。"""
         timeout = self.config.get("timeouts", {}).get("round0", 120)
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             futures = {
@@ -116,22 +116,35 @@ class Roundtable:
             results = {rid: [] for rid in self.agents}
             for rid in self.agents:
                 _emit_live_event("agent_status", round=1, role_id=rid, status="thinking")
-            for future in concurrent.futures.as_completed(futures, timeout=timeout):
-                rid = futures[future]
-                try:
-                    results[rid] = future.result(timeout=timeout)
-                    first = results[rid][0] if results[rid] else {}
-                    preview = first.get("problem") or first.get("content") or "未返回有效意见"
-                    _emit_live_event(
-                        "agent_status", round=1, role_id=rid, status="completed",
-                        count=len(results[rid]), preview=str(preview)[:180],
-                    )
-                except Exception as e:
-                    logger.error(f"[Round0] {rid}: {e}")
-                    results[rid] = []
-                    _emit_live_event(
-                        "agent_status", round=1, role_id=rid, status="failed", preview=str(e)[:180]
-                    )
+            # as_completed 超时会抛 TimeoutError——catch 它，已完成的 results 已收集，
+            # 未完成的标记 failed。绝不能因一个专家慢就把全部批注丢掉。
+            try:
+                for future in concurrent.futures.as_completed(futures, timeout=timeout):
+                    rid = futures[future]
+                    try:
+                        results[rid] = future.result(timeout=timeout)
+                        first = results[rid][0] if results[rid] else {}
+                        preview = first.get("problem") or first.get("content") or "未返回有效意见"
+                        _emit_live_event(
+                            "agent_status", round=1, role_id=rid, status="completed",
+                            count=len(results[rid]), preview=str(preview)[:180],
+                        )
+                    except Exception as e:
+                        logger.error(f"[Round0] {rid}: {e}")
+                        results[rid] = []
+                        _emit_live_event(
+                            "agent_status", round=1, role_id=rid, status="failed", preview=str(e)[:180]
+                        )
+            except concurrent.futures.TimeoutError:
+                # 超时：未完成的专家标记 failed，已完成的 results 保留
+                timed_out = [rid for rid in self.agents if not results[rid]]
+                # 注意：results[rid] 为空可能是真没批注而非超时，这里统一标超时
+                for rid in timed_out:
+                    if not any(f for f in futures if futures[f] == rid and f.done()):
+                        logger.warning(f"[Round0] {rid} 超时（{timeout}s），跳过，保留已完成专家批注")
+                        _emit_live_event(
+                            "agent_status", round=1, role_id=rid, status="failed", preview="超时跳过"
+                        )
         return results
 
     def run_round1(self, round0: dict) -> tuple[dict, list]:
@@ -186,13 +199,14 @@ class Roundtable:
         return round1_so_far, all_signals
 
     def _safe_annotate(self, role_id: str, agent, experiences: list) -> list:
-        for attempt in range(2):
-            anns = agent.annotate(self.lesson_data["text"],
-                                  self.lesson_data["profile"],
-                                  experiences)
-            if anns:
-                return anns
-        logger.error(f"[{role_id}] 两次解析均失败")
+        # 只调一次，不重试。解析失败多为"输出太长截断"，重试会再跑一次完整调用
+        # （双倍时间）且大概率还截断——同样的长输出不会变短。省掉重试时间。
+        anns = agent.annotate(self.lesson_data["text"],
+                              self.lesson_data["profile"],
+                              experiences)
+        if anns:
+            return anns
+        logger.error(f"[{role_id}] 批注解析失败，返回空列表")
         return []
 
     def _safe_review(self, role_id: str, agent,
