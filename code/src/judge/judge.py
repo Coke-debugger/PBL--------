@@ -34,11 +34,10 @@ from .sampling import (
 
 DEFAULT_MODEL_POOL = ["claude-opus-4-8"]
 
-# 采样次数：极限提速档——C/F 从3降到2（配合全flash，单次快，2次够多数票）。
-# B/D 仍 3 次（这俩最容易被 flash 的"evidence判满足却填0"矛盾拖累，需第三票稀释）。
-# A/E 结构/语言判定 2 次即可。总采样 2+3+2+3+2+2=14。
-# 若 C/F 波动变大不可接受，把 C/F 调回 3。
-N_SAMPLES = {"A": 2, "B": 3, "C": 2, "D": 3, "E": 2, "F": 2}
+# 采样次数：极限提速档——全部 2 次。实测 B/D 的第3次采样(S3补提)稳定卡2.5-3分钟
+# 长尾，是评审6分钟的真凶。降到2次彻底不补提，杜绝长尾。稳定性靠温度0.0 + W3离群
+# 剔除 + evidence_override 兜底。总采样 2*6=12。
+N_SAMPLES = {"A": 2, "B": 2, "C": 2, "D": 2, "E": 2, "F": 2}
 
 # 进度回调签名：on_progress(dim, done, total, message)。done/total 为已完成的
 # 维度数与维度总数（6），message 为面向用户的一行说明。回调为空时无副作用，

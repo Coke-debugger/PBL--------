@@ -55,7 +55,9 @@ class BaseAgent:
             system=self.get_system_prompt(),
             user=prompt,
             temperature=self._api_cfg.get("annotation_temperature", 0.0),
-            max_tokens=self._api_cfg.get("max_tokens", 2048),
+            # 批注要输出多条issue+evidence+quote，2048常在数组中间截断→解析失败→专家空转。
+            # 提到4096装得下完整批注，避免截断。可用 api.yaml 的 annotation_max_tokens 覆盖。
+            max_tokens=self._api_cfg.get("annotation_max_tokens", 4096),
             model=self._resolve_model(),
         )
         result = parse_json_safe(raw)

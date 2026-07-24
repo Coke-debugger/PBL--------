@@ -119,7 +119,12 @@ def _call_openai_compat(cfg, system, user, model, max_tokens, temperature):
 
 # ── 工具函数 ──────────────────────────────────────────────────────────
 def parse_json_safe(text: str | None) -> Optional[list | dict]:
-    """宽容JSON解析"""
+    """宽容JSON解析（含截断抢救）。
+
+    flash 输出批注/评审时，max_tokens 不足会在数组中间截断，json.loads 失败。
+    截断抢救：从末尾回退到最后一个完整值，再补全未闭合的 []/{} 括号，尽力取出
+    已完成的部分。哪怕只剩前两条批注也比整段解析失败、0 条批注强（0 条=专家空转）。
+    """
     import re
     if not isinstance(text, str) or not text.strip():
         logger.error("模型返回空文本，无法解析 JSON")
@@ -139,6 +144,62 @@ def parse_json_safe(text: str | None) -> Optional[list | dict]:
     if m:
         try: return json.loads(m.group(0))
         except: pass
+    # 截断抢救：取最外层 [ 或 { 开始的片段，补全括号
+    salvaged = _salvage_truncated_json(text)
+    if salvaged is not None:
+        logger.info("JSON 截断抢救成功，取回部分内容")
+        return salvaged
+    return None
+
+
+def _salvage_truncated_json(text: str) -> Optional[list | dict]:
+    """从被 max_tokens 截断的 JSON 片段抢救已完成的部分（补全括号）。"""
+    # 找最外层 [ 或 { 的起点
+    start = -1
+    for i, ch in enumerate(text):
+        if ch in "[{":
+            start = i
+            break
+    if start < 0:
+        return None
+    candidate = text[start:]
+    # 从末尾往前找最后一个完整值结尾（}、]、数字、引号），逐层补全未闭合括号
+    for cut in range(len(candidate), 0, -1):
+        chunk = candidate[:cut]
+        opens = []
+        in_str = False
+        esc = False
+        for ch in chunk:
+            if esc:
+                esc = False
+                continue
+            if ch == "\\":
+                esc = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch in "{[":
+                opens.append(ch)
+            elif ch == "}":
+                if opens and opens[-1] == "{":
+                    opens.pop()
+            elif ch == "]":
+                if opens and opens[-1] == "[":
+                    opens.pop()
+        if opens:
+            closers = "".join("}" if o == "{" else "]" for o in reversed(opens))
+            try:
+                return json.loads(chunk + closers)
+            except json.JSONDecodeError:
+                continue
+        else:
+            try:
+                return json.loads(chunk)
+            except json.JSONDecodeError:
+                continue
     return None
 
 
