@@ -57,6 +57,17 @@ class Integrator:
                 # 有 quote：尝试定位并替换（replace 型）
                 located, text = self._locate_and_replace(text, quote, suggestion)
                 if located:
+                    # C 维度全文同步：r_content 的 also_replace 列出"教案里其他位置同一错误结论的旧表述"，
+                    # 逐个替换成 suggestion，避免"改了一处、别处还矛盾"导致 C 维度扣分（实测 C 从5.0降到3.0
+                    # 就是这个原因：40%最佳改了一处，另一处"40%为最佳"没同步）。
+                    also_replace = ann.get("also_replace", []) or []
+                    synced = 0
+                    for old_phrase in also_replace:
+                        if not isinstance(old_phrase, str) or not old_phrase.strip():
+                            continue
+                        sub_loc, text = self._locate_and_replace(text, old_phrase.strip(), suggestion)
+                        if sub_loc:
+                            synced += 1
                     modifications.append(Modification(
                         mod_id        = f"M{mod_counter:02d}",
                         location      = location,
