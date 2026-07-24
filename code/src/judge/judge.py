@@ -34,11 +34,11 @@ from .sampling import (
 
 DEFAULT_MODEL_POOL = ["claude-opus-4-8"]
 
-# 采样次数：C/F（权重最高，合计50/100）3次维持根因去重/封顶判断稳定性；B/D 也
-# 用 3 次——这两个维度最容易被 flash 的"evidence 判满足却填0"自相矛盾拖累，2
-# 次采样时偶发矛盾无第三票稀释会稳稳得0分，3 次更稳（配合 evidence_override 兜底
-# 进一步修正）。A/E 这类以结构/语言判定为主的维度 2 次即可。总采样 2+3+3+3+2+3=16。
-N_SAMPLES = {"A": 2, "B": 3, "C": 3, "D": 3, "E": 2, "F": 3}
+# 采样次数：极限提速档——C/F 从3降到2（配合全flash，单次快，2次够多数票）。
+# B/D 仍 3 次（这俩最容易被 flash 的"evidence判满足却填0"矛盾拖累，需第三票稀释）。
+# A/E 结构/语言判定 2 次即可。总采样 2+3+2+3+2+2=14。
+# 若 C/F 波动变大不可接受，把 C/F 调回 3。
+N_SAMPLES = {"A": 2, "B": 3, "C": 2, "D": 3, "E": 2, "F": 2}
 
 # 进度回调签名：on_progress(dim, done, total, message)。done/total 为已完成的
 # 维度数与维度总数（6），message 为面向用户的一行说明。回调为空时无副作用，
@@ -115,6 +115,8 @@ class Judge:
             "text": lesson_text, "profile": self.profile, "lesson_type": lesson_type,
             "judge_version": self._judge_version(), "judge_mode": judge_mode,
             "model_pool": self.model_pool,
+            # 评分策略版本：改模型分配/采样数等策略时递增，自动失效旧缓存
+            "strategy_v": 2,
         }, sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
 
@@ -211,15 +213,13 @@ class Judge:
         c_prompt = build_c_dimension_prompt(clean_text, self.profile)
         c_n = n_for("C")
 
-        # 混合模型池：池首为快速模型（如 flash），池尾为精确模型（如 pro）。
-        # C（内容准确性，要判知识对错）和 F（权重30的核心维度）用 pro 保精度；
-        # A/B/D/E 用 flash 提速。单元素池时退化为全用该模型，向后兼容。
-        # 这是评审耗时的大头杠杆：pro 单次 60~120s，flash 约 15~30s，A/B/D/E
-        # 占 12 次调用，换 flash 后墙钟从~6分钟压到~2分钟。
+        # 极限提速档：所有维度都用 flash（pool[0]），不再让 C/F 用 pro。
+        # pro 单次 60~120s 是墙钟大头，全换 flash(15~30s) 后墙钟砍半以上。
+        # 代价：C 知识准确性可能波动变大，靠温度0.0 + 多采样多数票 + W3离群剔除
+        # + evidence_override 兜底压波动。若 C 误判增多，恢复 _model_for 让 C/F 用
+        # pool[-1]（pro）即可。
         def _model_for(dim: str) -> str:
-            if len(self.model_pool) == 1:
-                return self.model_pool[0]
-            return self.model_pool[-1] if dim in ("C", "F") else self.model_pool[0]
+            return self.model_pool[0]
 
         def _point_sample(dim: str, i: int):
             model = _model_for(dim)
