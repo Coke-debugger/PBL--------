@@ -107,7 +107,7 @@ class Judge:
     # 不再调模型。S5提速方案——零风险，只对"重复评同一份"有效（前后对比页评磨课前
     # 教案、多次跑同一教案时生效）。缓存文件存在项目根 judge_cache/ 下。
     _CACHE_DIR = Path(__file__).resolve().parents[3] / "judge_cache"
-    _CACHE_ENABLED = True  # 可在调用方设 False 关闭（如校准测试要强制重评）
+    _CACHE_ENABLED = False  # 暂时禁用：缓存会让同教案多次评审返回相同结果，无法观察评审稳定性。需时改 True
 
     def _cache_key(self, lesson_text: str, lesson_type: str, judge_mode: str) -> str:
         payload = json.dumps({
