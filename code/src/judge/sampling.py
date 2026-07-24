@@ -201,13 +201,21 @@ def sample_c_dimension(
 
 
 def _majority_score(scores: list[int]) -> int:
-    """多数判定；平票时取较低分（保守策略，与本系统其余降级路径口径一致）。"""
+    """多数判定；平票时取较低分（保守策略，与本系统其余降级路径口径一致）。
+
+    W3 离群剔除：3次采样若全不同（如[0,1,2]，无多数票），取中位数而非机械取最低——
+    全不同说明3次各执一词，最低分往往是单次抖动（如模型偶发判0），中位数更抗单次
+    离群。2次采样平票时仍保守取较低分（样本太少，中位数=较低分，等价）。
+    """
     if not scores:
         return 0
     counts = Counter(scores)
     top = counts.most_common()
     best_count = top[0][1]
     tied = sorted(v for v, c in top if c == best_count)
+    if len(tied) > 1 and len(scores) >= 3:
+        # 平票且样本≥3（即3次全不同或2:2:1之类无多数）：取中位数抗离群
+        return sorted(scores)[len(scores) // 2]
     return tied[0]
 
 
