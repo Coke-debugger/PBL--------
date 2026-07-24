@@ -5,7 +5,7 @@ pipeline:
   enable_argument:    false   # Phase 3 才开启
   enable_chair:       false   # Phase 2 才开启
   enable_judge:       true
-  enable_refine:      true   # 评审后对低分维度做章节级二次修订（旧版整篇重生成会截断毁教案，已改为按章节补写+长度守卫）
+  enable_refine:      false  # 关闭：refine读全文3万字只补一小段(慢3分钟)，且追加不替换易越磨越差。靠专家批注+整合保证质量。需时改 enable_refine: true
   enable_monitor:     false
   enable_experience:  false
   enable_bias_audit:  false
