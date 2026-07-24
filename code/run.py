@@ -267,7 +267,7 @@ def main() -> int:
                 # 每轮：focused_revise(temp 0.3 产生多样性) → 轻量复评(n=1)拿该轮分；
                 # 取分数最高那轮的 polished 作为 draft_text，Step6 再对它做一次完整评审。
                 n_rounds = max(1, int(config.get("n_rounds", 1)))
-                logger.info(f"=== Step 5b 分段聚焦改写（{n_rounds} 轮取最好）===")
+                logger.info(f"=== Step 5b 分段聚焦改写（{n_rounds} 轮）===")
                 best = {"score": -1.0, "draft": original_text, "mods": []}
                 for r in range(1, n_rounds + 1):
                     emit_progress(
@@ -280,7 +280,12 @@ def main() -> int:
                     if not r_mods:
                         logger.info(f"  第{r}轮未产出修改，跳过")
                         continue
-                    # 轻量复评该轮改后教案，拿分数比较（n=1 快速，省成本）
+                    if n_rounds == 1:
+                        # 单轮无需比较分数，直接采纳，省掉这一轮轻量复评的时间
+                        best = {"score": -1.0, "draft": r_draft, "mods": r_mods}
+                        logger.info(f"  单轮改写采纳（修改 {len(r_mods)} 条）")
+                        continue
+                    # 多轮：轻量复评该轮改后教案，拿分数比较（n=1 快速，省成本）
                     r_report = _run_judge(
                         judge, r_draft, lesson_type, timeouts,
                         n_samples_override=1, label=f"第{r}轮复评",

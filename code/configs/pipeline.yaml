@@ -22,7 +22,7 @@ pipeline:
   judge_fast_model: deepseek-v4-flash-ascend  # 快速模型：用于 A/B/D/E 维度采样，大幅提速
   # 多轮分段聚焦改写轮数：每轮用 temp 0.3 产生多样性改写，轻量复评后取最高分那轮。
   # 单次 LLM 改写不可靠，靠"多轮选优"保证质量。设 1=单轮（关掉选优，省时）。
-  n_rounds: 3
+  n_rounds: 1   # 暂时单轮省时（3轮太慢）。质量稳定后可调回 3 选优
 
   timeouts:
     round0:    300   # 4个并行，测试阶段宽松
