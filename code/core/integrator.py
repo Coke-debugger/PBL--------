@@ -48,7 +48,7 @@ class Integrator:
 
         for role_id, ann in all_annotations:
             quote       = ann.get("quote", "")
-            suggestion  = ann.get("suggestion", "")
+            suggestion  = self._clean_suggestion(ann.get("suggestion", ""))
             if not suggestion:
                 continue
             location = ann.get("location", "") or "全文"
@@ -192,6 +192,40 @@ class Integrator:
         text = unicodedata.normalize("NFKC", text)
         text = re.sub(r"\s+", " ", text)
         return text
+
+    @staticmethod
+    def _clean_suggestion(suggestion: str) -> str:
+        """剥离 suggestion 的元说明前缀，只留成品文本；纯元说明返回空（丢弃）。
+
+        专家偶发把"建议插入以下内容：\n\n成品"或"应改为：成品"写进 suggestion，
+        整合时会原样塞进教案污染。这里剥掉常见元说明前缀（取冒号/换行后的成品）。
+        若剥完只剩元说明词、无成品内容，返回空让调用方丢弃这条批注。
+        """
+        if not isinstance(suggestion, str):
+            return ""
+        s = suggestion.strip()
+        if not s:
+            return ""
+        # 常见元说明前缀：取冒号后的内容
+        meta_prefixes = (
+            "建议插入以下内容", "建议插入", "建议补充", "建议补写", "建议改为",
+            "应改为", "改为", "替换为", "修改为", "补充如下", "插入以下内容",
+            "可改为", "需要补写", "应当",
+        )
+        for prefix in meta_prefixes:
+            if s.startswith(prefix):
+                # 找冒号（中英文）或换行，取其后
+                rest = s[len(prefix):]
+                sep = re.search(r"[:：\n]", rest)
+                if sep:
+                    s = rest[sep.end():].strip()
+                else:
+                    s = rest.strip()
+                break
+        # 若剥完后是空或只剩几个字（无实质成品），丢弃
+        if len(s) < 5:
+            return ""
+        return s
 
     # ── 新增：Phase 2 方法 ─────────────────────────────────────────────
 

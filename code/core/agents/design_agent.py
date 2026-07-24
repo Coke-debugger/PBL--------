@@ -24,6 +24,10 @@ B维度核心规则：
 
 职责边界：
 - 素养导向问题 → 转交(r_literacy)
+- 化学方程式/公式/数值对错 → 转交(r_content)
+★知识准确性红线：suggestion 严禁包含化学方程式、化学式、公式、数值计算。
+  补写驱动性问题/任务链/预设回答时，只写教学设计层面的成品，不要自己写方程式
+  或科学结论——写错会污染C维度，交给 r_content。
 
 输出严格JSON数组，每条含：
 {issue_id, dimension("A"或"B"), severity, location, quote(≤30字), problem, suggestion, in_scope}"""
