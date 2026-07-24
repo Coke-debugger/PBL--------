@@ -694,6 +694,79 @@ def render_process(process_path: Path) -> None:
         st.subheader("修改记录")
         st.dataframe(modifications, use_container_width=True, hide_index=True)
 
+    # 完整专家讨论：按角色分组展示每条批注的完整内容（问题/原文/建议/章节）。
+    # modifications 的 before/after_summary 被截断到80字，discussion 的 content 更完整，
+    # 这里优先用 discussion 的完整 content，配 modifications 的结构化字段补充。
+    render_full_discussion(roles, discussion, modifications)
+
+
+def render_full_discussion(roles: list[dict], discussion: list[dict], modifications: list[dict]) -> None:
+    """按专家角色分组，展示完整的讨论过程：每位专家的每条发言（问题+原文引用+建议+章节）。
+
+    数据来源：discussion（完整 content）+ modifications（结构化 role/location/before/after）。
+    discussion 的 content 格式 "[维度·severity] location：problem"，modifications 有完整字段。
+    合并两者：以 modifications 为主（结构化），discussion 的 content 补完整 problem。
+    """
+    if not modifications and not discussion:
+        return
+    with st.expander("💬 完整专家讨论过程", expanded=False):
+        st.caption("按专家角色分组，展示每位专家的批注：指出的问题、原文引用、修改建议、所在章节。")
+
+        # 角色名映射
+        role_names = {r.get("role_id"): r.get("name", r.get("role_id")) for r in roles}
+        # 备用名（roles 可能为空）
+        role_names.setdefault("r_literacy", "素养导向教研员")
+        role_names.setdefault("r_content", "学科内容专家")
+        role_names.setdefault("r_learner", "学情适配专家")
+        role_names.setdefault("r_design", "教学设计专家")
+
+        # modifications 按 source_role 分组，保留顺序
+        by_role: dict[str, list] = {}
+        for m in modifications:
+            by_role.setdefault(m.get("source_role", "未知"), []).append(m)
+
+        # discussion 也按 role 分组（兜底：modifications 没有但 discussion 有的角色）
+        disc_by_role: dict[str, list] = {}
+        for d in discussion:
+            disc_by_role.setdefault(d.get("role_id", "未知"), []).append(d)
+
+        all_roles = list(dict.fromkeys(
+            [m.get("source_role") for m in modifications] + list(disc_by_role.keys())
+        ))
+
+        for role_id in all_roles:
+            av = AVATARS.get(role_id, {"emoji": "🧑", "color": "#94a3b8"})
+            name = role_names.get(role_id, role_id or "未知角色")
+            mods = by_role.get(role_id, [])
+            discs = disc_by_role.get(role_id, [])
+            label = f"{av['emoji']} {name} · {len(mods) or len(discs)} 条发言"
+            with st.expander(label, expanded=False):
+                # 优先展示 modifications（结构化完整）
+                if mods:
+                    for i, m in enumerate(mods, 1):
+                        loc = m.get("location", "")
+                        located = m.get("quote_located")
+                        loc_tag = "✅ 定位替换" if located else "📝 补写插入"
+                        st.markdown(f"**发言 {i}** ｜ 章节：`{loc}` ｜ {loc_tag}")
+                        problem = m.get("rationale", "")
+                        if problem:
+                            st.markdown(f"- **指出问题**：{problem}")
+                        before = m.get("before_summary", "")
+                        if before:
+                            st.markdown(f"- **原文引用**：{before}")
+                        after = m.get("after_summary", "")
+                        if after:
+                            st.markdown(f"- **修改建议**：{after}")
+                        if i < len(mods):
+                            st.divider()
+                elif discs:
+                    # 没有 modifications，用 discussion 的 content
+                    for i, d in enumerate(discs, 1):
+                        st.markdown(f"**发言 {i}**")
+                        st.write(d.get("content", ""))
+                        if i < len(discs):
+                            st.divider()
+
 
 def render_roundtable(roles: list[dict], discussion: list[dict]) -> None:
     """按轮次展示四周小人专家与中央圆桌，并提供完整发言记录。"""
