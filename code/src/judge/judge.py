@@ -37,11 +37,10 @@ DEFAULT_MODEL_POOL = ["claude-opus-4-8"]
 # 用 3 次——这两个维度最容易被 flash 的"evidence 判满足却填0"自相矛盾拖累，2
 # 次采样时偶发矛盾无第三票稀释会稳稳得0分，3 次更稳（配合 evidence_override 兜底
 # 进一步修正）。A/E 这类以结构/语言判定为主的维度 2 次即可。总采样 2+3+3+3+2+3=16。
-# 采样次数：稳定性档——C/D/F 各 4 次、E 3 次（原 3/3/3/2）。
-# 实测 C/D/E/F 偶发离群根因有二：①采样偶发解析失败致有效样本不足（E 常 n_valid=1），
-# ②单次跑偏。加 1 次采样让多数票更稳，且失败 1 次仍有 2~3 次有效。A 靠确定性关键词
-# 校验已稳定，B 已稳定，保持不动。配合 _majority_score 离群剔除。总采样 2+3+4+4+3+4=20。
-N_SAMPLES = {"A": 2, "B": 3, "C": 4, "D": 4, "E": 3, "F": 4}
+# 采样次数：稳定性档——C 6 次（pro识别准但偶发漏抓，多采样取并集减少漏判）、
+# D/F 各 4 次、E 3 次。A 靠确定性关键词校验已稳定，B 已稳定，保持不动。
+# 配合 _majority_score 离群剔除。总采样 2+3+6+4+3+4=22。
+N_SAMPLES = {"A": 2, "B": 3, "C": 6, "D": 4, "E": 3, "F": 4}
 
 # 进度回调签名：on_progress(dim, done, total, message)。done/total 为已完成的
 # 维度数与维度总数（6），message 为面向用户的一行说明。回调为空时无副作用，
@@ -158,14 +157,14 @@ class Judge:
         c_n = n_for("C")
 
         # 混合模型池：池首为快速模型（如 flash），池尾为精确模型（如 pro）。
-        # F（权重30的核心维度）用 pro 保精度；其余维度（含 C）用 flash 提速。
-        # C 改用 flash：C 用 pro 时采样失败率高（pro 输出根因清单易截断/超时），
-        # n_valid 在 1~3 跳导致抓取不稳、C 分大跳。flash 快且稳定，配合多采样+
-        # 加权扣分压波动，比 pro 偶发失败更稳。单元素池时退化为全用该模型。
+        # C/F 用 pro 保精度；A/B/D/E 用 flash 提速。
+        # C 调回 pro：实测 flash 漏抓重大错误（4次里2次抓0个→C虚高5.0），pro 识别准。
+        # pro 之前的采样失败用 max_tokens=6144 + 6次采样冗余解决：截断少了、漏抓有并集补。
+        # 单元素池时退化为全用该模型。
         def _model_for(dim: str) -> str:
             if len(self.model_pool) == 1:
                 return self.model_pool[0]
-            return self.model_pool[-1] if dim == "F" else self.model_pool[0]
+            return self.model_pool[-1] if dim in ("C", "F") else self.model_pool[0]
 
         def _point_sample(dim: str, i: int):
             model = _model_for(dim)
