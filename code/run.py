@@ -177,9 +177,18 @@ def main() -> int:
             judge_model = os.environ.get("USTC_JUDGE_MODEL") or config.get(
                 "judge_model", "deepseek-v4-pro"
             )
+            # 第二模型（C/F 多模型家族）：填了则 C/F 在 [judge_model, second] 间轮流采样，
+            # 实现附录A"≥2模型家族"交叉验证；留空则 C/F 只用 judge_model。
+            judge_second = os.environ.get("USTC_JUDGE_SECOND_MODEL") or config.get("judge_second_model", "")
             # 池首=flash，池尾=pro；二者不同时才构成混合池，相同时退化为单模型。
             model_pool = [_flash_model, judge_model] if _flash_model != judge_model else [judge_model]
-            judge = Judge(lesson_data["profile"], model_pool=model_pool)
+            # 第二模型去重（不和主模型重复）
+            cf_pool = [m for m in [judge_model, judge_second] if m and m not in (model_pool[:1] if False else [])]
+            if judge_second and judge_second != judge_model:
+                cf_pool = [judge_model, judge_second]
+            else:
+                cf_pool = [judge_model]
+            judge = Judge(lesson_data["profile"], model_pool=model_pool, cf_pool=cf_pool)
             lesson_type = lesson_data["structure"].get("course_type", "常规课")
 
             # 逐维度进度透传给可视化界面：复用 phase_status 通道，

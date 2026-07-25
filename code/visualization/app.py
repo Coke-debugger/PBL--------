@@ -86,6 +86,7 @@ def run_workshop(
     judge_model: str,
     agent_models: dict | None = None,
     judge_fast_model: str = "",
+    judge_second_model: str = "",
     on_event=None,
 ) -> subprocess.CompletedProcess[str]:
     entry = "baseline.py" if mode == "单模型基线" else "run.py"
@@ -115,6 +116,9 @@ def run_workshop(
     # Judge 快速模型：A/B/D/E 评审用。run.py 据此与 judge_model 构成混合池。
     if judge_fast_model.strip():
         env["USTC_LLM_MODEL"] = judge_fast_model.strip()
+    # Judge 第二模型：C/F 多模型家族交叉验证用。run.py 据此把第二模型加入 C/F 池。
+    if judge_second_model.strip():
+        env["USTC_JUDGE_SECOND_MODEL"] = judge_second_model.strip()
     # 各专家独立模型：USTC_AGENT_MODEL_{ROLE_ID 大写}，BaseAgent._resolve_model 读取。
     for role_id, m in (agent_models or {}).items():
         if m and m.strip():
@@ -178,6 +182,7 @@ def evaluate_lesson_inprocess(
     judge_model: str,
     judge_fast_model: str,
     api_key: str,
+    judge_second_model: str = "",
     on_progress=None,
 ) -> dict:
     """在 UI 进程内调用 Judge 评审一份教案，返回与 scores.json 同结构的 report。
@@ -193,13 +198,17 @@ def evaluate_lesson_inprocess(
         os.environ["USTC_LLM_API_KEY"] = api_key
     timeouts = pipeline_config.get("timeouts", {})
     model_pool = build_judge_pool(pipeline_config, judge_model, judge_fast_model)
+    # C/F 多模型家族：第二模型加入 cf_pool
+    pro = judge_model.strip() or pipeline_config.get("judge_model", "deepseek-v4-pro")
+    second = judge_second_model.strip() or pipeline_config.get("judge_second_model", "")
+    cf_pool = [pro, second] if second and second != pro else [pro]
 
     try:
         from src.judge import Judge, JudgeBudgetExceeded
     except Exception as exc:  # noqa: BLE001
         raise RuntimeError(f"无法加载评审模块：{exc}") from exc
 
-    judge = Judge(profile, model_pool=model_pool)
+    judge = Judge(profile, model_pool=model_pool, cf_pool=cf_pool)
     full_budget = timeouts.get("judge_full", 360)
 
     def _progress(dim: str, done: int, total: int, message: str) -> None:
@@ -337,6 +346,7 @@ def render_compare_tab(
     judge_fast_model: str,
     api_key: str,
     lesson_files: list[Path],
+    judge_second_model: str = "",
 ) -> None:
     """前后对比页：同一份教案，对比磨课前(原始)与磨课后(整合)的 Judge 分数。"""
     polished_path = result_dir / f"{prefix}_polished.md"
@@ -435,6 +445,7 @@ def render_compare_tab(
                 judge_model=judge_model,
                 judge_fast_model=judge_fast_model,
                 api_key=api_key,
+                judge_second_model=judge_second_model,
                 on_progress=_on_progress,
             )
             progress.progress(1.0, text="磨课前评分完成。")
@@ -790,9 +801,10 @@ def main() -> None:
                     help=f"留空用默认 {model_name}。对应环境变量 USTC_AGENT_MODEL_{role_id.upper()}。",
                 )
         # Judge 评审拆成快速/精确两个模型：A/B/D/E 用快速、C/F 用精确（judge.py 混合池）。
-        # 想全用快模型就把两个都填 flash；想全用精确就两个都填 pro。
+        # C/F 多模型家族：附录A要求C"≥2模型家族"。填了第二模型，C/F 的多次采样会轮流用
+        # 精确模型+第二模型，实现交叉验证（而非单模型多次采样）。留空则 C/F 只用精确模型。
         with st.expander("评审模型（Judge，快/精分离）", expanded=False):
-            st.caption("快速模型评审 A/B/D/E，精确模型评审 C/F（内容准确性/素养核心）。")
+            st.caption("快速模型评审 A/B/D/E，精确模型评审 C/F。C/F 可加第二模型做多模型家族交叉验证。")
             judge_fast_model = st.text_input(
                 "评审·快速模型",
                 value=pipeline_config.get("judge_fast_model", "deepseek-v4-flash-ascend"),
@@ -801,7 +813,13 @@ def main() -> None:
             judge_model = st.text_input(
                 "评审·精确模型",
                 value=pipeline_config.get("judge_model", "deepseek-v4-pro"),
-                help="评审 C/F 两个维度用的模型；两框填同一模型=该模型评审全部维度。",
+                help="评审 C/F 用的精确模型；与第二模型轮流采样做多模型家族。",
+            )
+            judge_second_model = st.text_input(
+                "评审·第二模型（C/F 多模型家族，可选）",
+                value=pipeline_config.get("judge_second_model", ""),
+                help="留空则 C/F 只用精确模型(单模型多次采样)。填了则 C/F 轮流用精确+第二模型,"
+                     "实现附录A要求的≥2模型家族交叉验证(提高C可靠性)。",
             )
         output_value = st.text_input(
             "输出目录",
@@ -929,6 +947,7 @@ def main() -> None:
                             student_id, sample_id, no_judge, api_key, model_name, judge_model,
                             agent_models=agent_models,
                             judge_fast_model=judge_fast_model,
+                            judge_second_model=judge_second_model,
                             on_event=update_live_view,
                         )
                     if completed.returncode == 0 and mode == "多智能体磨课":
@@ -1031,6 +1050,7 @@ def main() -> None:
             judge_fast_model=judge_fast_model,
             api_key=api_key,
             lesson_files=lesson_files,
+            judge_second_model=judge_second_model,
         )
 
 

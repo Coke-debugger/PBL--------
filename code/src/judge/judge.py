@@ -98,12 +98,14 @@ LOW_EVIDENCE_TRUST_CAP = 4.0
 
 
 class Judge:
-    def __init__(self, profile: dict, model_pool: list[str] | None = None):
+    def __init__(self, profile: dict, model_pool: list[str] | None = None,
+                 cf_pool: list[str] | None = None):
         self.profile = profile
-        # model_pool 显式可配置：先传单模型（同模型多次采样代替"多模型家族"），
-        # 未来要接入第二个模型家族时，调用方直接传多元素列表即可，本类与
-        # sampling.py 均不需要改动。
+        # model_pool: A/B/D/E 用（池首 flash）；cf_pool: C/F 轮流用的模型家族。
+        # cf_pool 传多个模型时，C/F 采样按 i 轮流用，实现附录A"≥2模型家族"交叉验证。
+        # cf_pool 为空或单元素时，C/F 用 model_pool[-1]（精确模型），向后兼容。
         self.model_pool = model_pool or list(DEFAULT_MODEL_POOL)
+        self.cf_pool = cf_pool or [self.model_pool[-1]] if self.model_pool else []
         self.rubric = load_rubric()
 
     def evaluate(
@@ -161,13 +163,15 @@ class Judge:
         # C 调回 pro：实测 flash 漏抓重大错误（4次里2次抓0个→C虚高5.0），pro 识别准。
         # pro 之前的采样失败用 max_tokens=6144 + 6次采样冗余解决：截断少了、漏抓有并集补。
         # 单元素池时退化为全用该模型。
-        def _model_for(dim: str) -> str:
-            if len(self.model_pool) == 1:
-                return self.model_pool[0]
-            return self.model_pool[-1] if dim in ("C", "F") else self.model_pool[0]
+        # C/F 多模型家族：cf_pool 传多个模型时，C/F 采样按 i 轮流用，实现附录A
+        # "≥2模型家族"交叉验证（而非单模型多次采样）。A/B/D/E 用 flash（model_pool[0]）。
+        def _model_for(dim: str, i: int = 0) -> str:
+            if dim in ("C", "F"):
+                return self.cf_pool[i % len(self.cf_pool)]
+            return self.model_pool[0] if self.model_pool else (self.cf_pool[0] if self.cf_pool else "")
 
         def _point_sample(dim: str, i: int):
-            model = _model_for(dim)
+            model = _model_for(dim, i)
             raw = _call_model(point_prompts[dim], model=model)
             try:
                 return _parse_json_object(raw)
@@ -175,7 +179,7 @@ class Judge:
                 return None
 
         def _c_sample(i: int):
-            model = _model_for("C")
+            model = _model_for("C", i)
             # C 维度温度 0.0：与其他维度一致，保证评审可复现（见 sampling._call_model）。
             # max_tokens 提到 6144：C 输出根因清单（每条含 root_cause/quote/error_type/
             # location），抓多个错误时 4096 易在数组中间截断→解析失败→n_valid 不足→C 跳。
@@ -229,7 +233,7 @@ class Judge:
                         }
                         low_confidence_dims.append(dim)
                     elif dim == "C":
-                        agg = aggregate_c_dimension(samples_for[dim], n_samples=c_n, model=_model_for("C"))
+                        agg = aggregate_c_dimension(samples_for[dim], n_samples=c_n, model=_model_for("C", 0), lesson_text=clean_text)
                         dimension_scores["C"] = agg["score"]
                         details["C"] = agg
                         if valid_n < max(1, c_n // 2):

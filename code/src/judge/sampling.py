@@ -411,15 +411,52 @@ def _merge_mapping_tables(samples: list[dict]) -> list[dict]:
     return list(seen.values())
 
 
+def _normalize_error_type(et: str) -> str:
+    """把模型输出的 error_type 措辞归一化到量规4类，避免措辞漂移导致静默不扣分。
+
+    模型可能写"重大错误""知识性错误""重大知识错误"(漏"性")、"一般不严谨"(漏"性")、
+    "符号公式问题"等变体。按关键词包含映射到标准4类，匹配不上按严重度猜（含"重大"→重大，
+    含"符号/公式/量纲"→符号，含"格式"→格式，其余→一般）。
+    """
+    if not isinstance(et, str):
+        return ""
+    s = et.strip()
+    # 精确匹配优先
+    std = {"重大知识性错误", "一般性不严谨", "符号/公式实质问题", "格式合规问题"}
+    if s in std:
+        return s
+    # 模糊：按关键词
+    if "重大" in s or "知识" in s:
+        return "重大知识性错误"
+    if "符号" in s or "公式" in s or "量纲" in s:
+        return "符号/公式实质问题"
+    if "格式" in s or "合规" in s or "LaTeX" in s or "latex" in s:
+        return "格式合规问题"
+    if "一般" in s or "不严谨" in s or "含糊" in s or "模糊" in s:
+        return "一般性不严谨"
+    # 兜底：未识别的归一般性不严谨（保守扣0.5，比静默不扣好）
+    return "一般性不严谨"
+
+
 def _root_cause_key(rc: str) -> str:
-    """根因归一化：取最长连续中文/字母片段作为簇键，让措辞不同但指同一问题的
-    根因合并（如"密闭空间燃烧缺氧中毒"与"密闭空间燃烧实验危险"应归一簇）。"""
+    """根因归一化簇键（字面合并回退用，主路径是语义去重）。
+
+    取 top-2 最长连续中文片段组合做签名，比单最长片段减少误合并
+    （"密闭空间燃烧缺氧中毒"与"密闭空间燃烧实验危险"会因第二片段"缺氧中毒"vs
+    "实验危险"不同而分开）。短/含公式根因无≥4字片段时退回全文归一化，保证能合并。
+    """
     norm = _normalize(rc)
     if not norm:
         return ""
-    # 取所有长度>=4的连续片段里最长的，没有就退回全文
     chunks = re.findall(r"[一-龥a-zA-Z]{4,}", norm)
-    return max(chunks, key=len) if chunks else norm
+    if len(chunks) >= 2:
+        # 取最长的2个片段，按长度降序拼成签名
+        top2 = sorted(chunks, key=len, reverse=True)[:2]
+        return "|".join(top2)
+    if len(chunks) == 1:
+        return chunks[0]
+    # 无≥4字片段（短根因/含公式）：退回全文归一化，保证同措辞能合并
+    return norm
 
 
 def _semantic_dedup_issues(issues: list[dict], model: str) -> list[dict] | None:
@@ -561,7 +598,7 @@ def _literal_dedup_confirm(all_issues: list[dict], dedup_table: dict) -> list[di
 
     confirmed = []
     for q_key, issues in quote_groups.items():
-        error_types = Counter(i.get("error_type", "") for i in issues)
+        error_types = Counter(_normalize_error_type(i.get("error_type", "")) for i in issues)
         best_type = max(error_types.keys(), key=lambda t: severity_rank.get(t, 0))
         confirmed.append({
             "root_cause": str(issues[0].get("root_cause", "")),
@@ -574,12 +611,13 @@ def _literal_dedup_confirm(all_issues: list[dict], dedup_table: dict) -> list[di
     return confirmed
 
 
-def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "") -> dict:
-    """C维度专用聚合：多次采样取并集 → 语义去重（模型合并同义错误）→ 全额扣分。
+def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "", lesson_text: str = "") -> dict:
+    """C维度专用聚合：多次采样取并集 → 语义去重（模型合并同义错误）→ 引用校验 → 全额扣分。
 
     规则（用户定）：并集取错误，同根因合并1个，每个错误全额扣对应额度，
     格式合规封顶1.0，其余无上限，累加到扣完(到0)。
     去重优先用模型语义去重（_semantic_dedup_issues），失败回退字面合并。
+    quote 引用校验：引用全不在原文的 issue 不计入扣分（防模型编造错误扣冤枉分）。
     """
     rubric = load_rubric()
     dedup_table = {d["type"]: d for d in rubric["dimensions"]["C"]["deduction_table"]}
@@ -594,7 +632,7 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "") 
         # 模型去重成功：直接用去重后的清单作为 confirmed
         confirmed = []
         for item in deduped:
-            et = str(item.get("error_type", ""))
+            et = _normalize_error_type(str(item.get("error_type", "")))
             if et not in dedup_table:
                 continue
             confirmed.append({
@@ -609,9 +647,24 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "") 
         # 回退：字面合并（root_cause关键词簇 + quote公共片段）
         confirmed = _literal_dedup_confirm(all_issues, dedup_table)
 
+    # quote 引用校验：引用全不在原文的 issue 不计入扣分（防模型编造错误引用扣冤枉分）。
+    # 复用 _quote_matches 的宽松匹配（容忍改写）。无 lesson_text 时跳过校验（不挡）。
+    norm_text = _normalize(lesson_text) if lesson_text else ""
+    verified_confirmed = []
+    for item in confirmed:
+        q = str(item.get("quote", ""))
+        if not q or not norm_text or _quote_matches(q, norm_text):
+            verified_confirmed.append(item)
+        else:
+            # 引用全不在原文：记下来但不扣分
+            item["quote_unverified"] = True
+            verified_confirmed.append(item)  # 保留在清单供查阅，但不进扣分
+    # 扣分只算引用能核实的（或无引用可核的）
+    deductable = [it for it in verified_confirmed if not it.get("quote_unverified")]
+
     total_deduction = 0.0
     format_deduction = 0.0
-    for item in confirmed:
+    for item in deductable:
         rule = dedup_table.get(item["error_type"])
         if rule is None:
             continue
@@ -624,7 +677,13 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "") 
     format_deduction = min(format_deduction, dedup_table.get("格式合规问题", {}).get("cap", format_deduction))
     total_deduction += format_deduction
 
-    has_verifiable = any(s.get("has_verifiable_content") for s in samples) if samples else False
+    # floor_clause：附录A要求教案须含可核查内容（例题/实验方案/数据），否则C封顶3.0。
+    # 原实现 any(模型说true) 过松（模型倾向给true）。改为多数采样同意 + 规则层检测：
+    # 教案里有数字数据/方程式/实验步骤等可核查内容才算有。两者皆无才封顶。
+    model_yes = sum(1 for s in samples if s.get("has_verifiable_content")) if samples else 0
+    model_verifiable = model_yes > len(samples) / 2 if samples else False
+    rule_verifiable = bool(re.search(r"\d+(\.\d+)?\s*(g|cm|mm|mL|L|min|℃|%|°)", lesson_text or "")) if lesson_text else False
+    has_verifiable = model_verifiable or rule_verifiable
     score = max(0.0, 5.0 - total_deduction)
     if not has_verifiable:
         score = min(score, 3.0)  # 内容回避封顶条款
@@ -632,7 +691,7 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "") 
     return {
         "dimension": "C",
         "score": round(score, 2),
-        "confirmed_issues": confirmed,
+        "confirmed_issues": verified_confirmed,
         "all_issues": all_issues,
         "has_verifiable_content": has_verifiable,
         "n_valid_samples": len(samples),
