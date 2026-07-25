@@ -448,17 +448,61 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int) -> dict:
             if key not in root_cause_display:
                 root_cause_display[key] = str(issue.get("root_cause", ""))
 
-    # 并集扣分：多次采样取并集，同根因合并为1个错误；任一采样报出即计入，
+    # 按 quote 二次合并：同一处原文引用的错误（措辞不同但指同一问题）并成1个。
+    # 模型常对同一错误用不同 root_cause/quote 措辞报多次（如"酥油比例矛盾"报5次），
+    # 只按根因合并会重复扣。按 quote 归一化后"两两有≥4字公共中文片段就并一组"（传递合并）。
+    severity_rank = {"重大知识性错误": 3, "符号/公式实质问题": 2, "一般性不严谨": 1, "格式合规问题": 0}
+    group_items = list(root_groups.items())  # [(root_key, issues), ...]
+    group_quotes = [
+        _normalize(str(iss[0].get("quote", "")) or k) for k, iss in group_items
+    ]
+
+    def _common_cn_len(a: str, b: str) -> int:
+        """两串的最长公共连续中文片段长度（数字/标点不计）。"""
+        best = 0
+        for i in range(len(a)):
+            for j in range(len(b)):
+                k = 0
+                while (i + k < len(a) and j + k < len(b) and a[i + k] == b[j + k]
+                       and "一" <= a[i + k] <= "鿿"):
+                    k += 1
+                if k > best:
+                    best = k
+        return best
+
+    # 并查集：公共中文片段≥4字的 group 合并
+    n = len(group_items)
+    parent = list(range(n))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for i in range(n):
+        for j in range(i + 1, n):
+            if find(i) == find(j):
+                continue
+            if _common_cn_len(group_quotes[i], group_quotes[j]) >= 4:
+                parent[find(j)] = find(i)
+
+    quote_groups: dict[int, list[dict]] = defaultdict(list)
+    for idx, (k, iss) in enumerate(group_items):
+        quote_groups[find(idx)].extend(iss)
+
+    # 并集扣分：多次采样取并集，同根因+同quote合并为1个错误；任一采样报出即计入，
     # 每个错误按类型全额扣对应额度（重大2.0/一般0.5/符号0.5），无门槛无加权。
     # 格式合规问题总扣分封顶1.0（量规规定），其余类型无上限，累加到扣完(到0)为止。
     confirmed = []
-    for key, issues in root_groups.items():
+    for q_key, issues in quote_groups.items():
+        # 同一quote的多个错误取最重档位（避免同一处既扣重大又扣一般）
         error_types = Counter(i.get("error_type", "") for i in issues)
         majority_type = error_types.most_common(1)[0][0]
+        # 若该quote同时被判重大和一般，取重的
+        best_type = max(error_types.keys(), key=lambda t: severity_rank.get(t, 0))
         confirmed.append(
             {
-                "root_cause": root_cause_display.get(key, key),
-                "error_type": majority_type,
+                "root_cause": str(issues[0].get("root_cause", "")),
+                "error_type": best_type,
                 "quote": issues[0].get("quote", ""),
                 "location": issues[0].get("location", ""),
                 "hit_count": len(issues),
