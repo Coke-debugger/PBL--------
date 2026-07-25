@@ -158,14 +158,14 @@ class Judge:
         c_n = n_for("C")
 
         # 混合模型池：池首为快速模型（如 flash），池尾为精确模型（如 pro）。
-        # C（内容准确性，要判知识对错）和 F（权重30的核心维度）用 pro 保精度；
-        # A/B/D/E 用 flash 提速。单元素池时退化为全用该模型，向后兼容。
-        # 这是评审耗时的大头杠杆：pro 单次 60~120s，flash 约 15~30s，A/B/D/E
-        # 占 12 次调用，换 flash 后墙钟从~6分钟压到~2分钟。
+        # F（权重30的核心维度）用 pro 保精度；其余维度（含 C）用 flash 提速。
+        # C 改用 flash：C 用 pro 时采样失败率高（pro 输出根因清单易截断/超时），
+        # n_valid 在 1~3 跳导致抓取不稳、C 分大跳。flash 快且稳定，配合多采样+
+        # 加权扣分压波动，比 pro 偶发失败更稳。单元素池时退化为全用该模型。
         def _model_for(dim: str) -> str:
             if len(self.model_pool) == 1:
                 return self.model_pool[0]
-            return self.model_pool[-1] if dim in ("C", "F") else self.model_pool[0]
+            return self.model_pool[-1] if dim == "F" else self.model_pool[0]
 
         def _point_sample(dim: str, i: int):
             model = _model_for(dim)
@@ -178,7 +178,10 @@ class Judge:
         def _c_sample(i: int):
             model = _model_for("C")
             # C 维度温度 0.0：与其他维度一致，保证评审可复现（见 sampling._call_model）。
-            raw = _call_model(c_prompt, model=model, temperature=0.0)
+            # max_tokens 提到 6144：C 输出根因清单（每条含 root_cause/quote/error_type/
+            # location），抓多个错误时 4096 易在数组中间截断→解析失败→n_valid 不足→C 跳。
+            # 6144 容纳完整根因清单，降截断失败率。
+            raw = _call_model(c_prompt, model=model, temperature=0.0, max_tokens=6144)
             try:
                 return _parse_json_object(raw)
             except (ValueError, json.JSONDecodeError):
