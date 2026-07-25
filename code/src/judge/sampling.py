@@ -448,27 +448,13 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int) -> dict:
             if key not in root_cause_display:
                 root_cause_display[key] = str(issue.get("root_cause", ""))
 
-    # 报错的采样数（用于一般性问题的相对门槛）
-    samples_with_issues = sum(1 for s in samples if s.get("issues"))
-
+    # 并集扣分：多次采样取并集，同根因合并为1个错误；任一采样报出即计入，
+    # 每个错误按类型全额扣对应额度（重大2.0/一般0.5/符号0.5），无门槛无加权。
+    # 格式合规问题总扣分封顶1.0（量规规定），其余类型无上限，累加到扣完(到0)为止。
     confirmed = []
     for key, issues in root_groups.items():
         error_types = Counter(i.get("error_type", "") for i in issues)
         majority_type = error_types.most_common(1)[0][0]
-        is_major = majority_type == "重大知识性错误"
-        # 重大错误：任一采样报出即确认（这类错误鲜有误报，不应因采样未重复报而放过）。
-        # 一般性问题：命中≥2，或命中数 ≥ 报错采样数一半（抑制 flash 随机误报）；
-        #   但当报错采样本身就少（samples_with_issues<=2）时降到1，避免漏判。
-        if is_major:
-            threshold = 1
-        elif len(issues) >= 2:
-            threshold = 2
-        elif samples_with_issues <= 2:
-            threshold = 1
-        else:
-            threshold = max(1, samples_with_issues / 2)
-        # 不再用"达到门槛才进 confirmed"二元过滤——所有被报出的根因都纳入，
-        # 按支持度(k/门槛)加权扣分。这样差一票没确认也部分扣分，C 不再全有全无跳。
         confirmed.append(
             {
                 "root_cause": root_cause_display.get(key, key),
@@ -476,26 +462,21 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int) -> dict:
                 "quote": issues[0].get("quote", ""),
                 "location": issues[0].get("location", ""),
                 "hit_count": len(issues),
-                "threshold": threshold,
-                "confirmed": len(issues) >= threshold,  # 是否达门槛（全额扣）
             }
         )
 
-    # 按支持度加权扣分（修 C 全有全无跳动）：
-    # 某根因被 k 次采样报出、确认门槛 t，扣 额度×min(1, k/t)。
-    # k 不足门槛时部分扣分（非0）；达到门槛全额扣；超过门槛不超扣。
-    # 避免"差一票没确认→一分不扣→C飙到5"和"确认了→全额扣→C骤降"的二元跳。
     total_deduction = 0.0
     format_deduction = 0.0
     for item in confirmed:
         rule = dedup_table.get(item["error_type"])
         if rule is None:
             continue
-        support = min(1.0, item["hit_count"] / max(1, item["threshold"]))
         if "cap" in rule:
-            format_deduction += rule["deduction"] * support
+            # 格式合规问题：累加后封顶 cap（量规规定全文档一次性封顶-1）
+            format_deduction += rule["deduction"]
         else:
-            total_deduction += rule["deduction"] * support
+            # 重大/一般/符号：每个错误全额扣，无上限，累加到扣完
+            total_deduction += rule["deduction"]
     format_deduction = min(format_deduction, dedup_table.get("格式合规问题", {}).get("cap", format_deduction))
     total_deduction += format_deduction
 
