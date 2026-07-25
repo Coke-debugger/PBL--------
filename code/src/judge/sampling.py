@@ -454,7 +454,17 @@ def _semantic_dedup_issues(issues: list[dict], model: str) -> list[dict] | None:
     try:
         raw = _call_model(prompt, model=model, temperature=0.0, max_tokens=4096)
         parsed = _parse_json_object(raw)
+        # 兼容模型返回数组 或 dict包数组(如{"issues":[...]})
+        if isinstance(parsed, dict):
+            for v in parsed.values():
+                if isinstance(v, list):
+                    parsed = v
+                    break
         if isinstance(parsed, list) and parsed:
+            # 只保留含 root_cause 的有效条目
+            parsed = [it for it in parsed if isinstance(it, dict) and it.get("root_cause")]
+            if not parsed:
+                return None
             # 补 location（模型输出可能没有，从原 issues 按quote匹配回填）
             quote_to_loc = {str(i.get("quote", ""))[:60]: i.get("location", "") for i in issues}
             for item in parsed:
