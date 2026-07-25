@@ -453,8 +453,8 @@ def _semantic_dedup_issues(issues: list[dict], model: str) -> list[dict] | None:
     )
     try:
         raw = _call_model(prompt, model=model, temperature=0.0, max_tokens=4096)
-        parsed = _parse_json_object(raw)
-        # 兼容模型返回数组 或 dict包数组(如{"issues":[...]})
+        parsed = _parse_json_array(raw)
+        # 兼容模型返回 dict包数组(如{"issues":[...]})
         if isinstance(parsed, dict):
             for v in parsed.values():
                 if isinstance(v, list):
@@ -474,6 +474,44 @@ def _semantic_dedup_issues(issues: list[dict], model: str) -> list[dict] | None:
         return None
     except Exception:
         return None
+
+
+def _parse_json_array(raw: str) -> list | dict | None:
+    """解析模型输出的 JSON 数组（_parse_json_object 只取第一个{}，不适合数组）。
+
+    优先 json.loads 整体；失败则剥代码块、取最外层 [...] 片段、截断抢救补全括号。
+    返回 list（或 dict，供调用方再取数组字段）。
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    import json as _json
+    import re as _re
+    # 代码块
+    m = _re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
+    candidate = m.group(1) if m else raw
+    try:
+        v = _json.loads(candidate.strip())
+        return v
+    except _json.JSONDecodeError:
+        pass
+    # 取最外层 [ ... ] 片段
+    m = _re.search(r"\[[\s\S]*\]", candidate)
+    if m:
+        try:
+            return _json.loads(m.group(0))
+        except _json.JSONDecodeError:
+            # 截断抢救：补全括号
+            salvaged = _salvage_truncated_json(m.group(0))
+            if isinstance(salvaged, list):
+                return salvaged
+    # 退化：可能是 dict 包数组
+    m = _re.search(r"\{[\s\S]*\}", candidate)
+    if m:
+        try:
+            return _json.loads(m.group(0))
+        except _json.JSONDecodeError:
+            pass
+    return None
 
 
 def _literal_dedup_confirm(all_issues: list[dict], dedup_table: dict) -> list[dict]:
