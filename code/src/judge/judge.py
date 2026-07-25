@@ -229,7 +229,7 @@ class Judge:
                         }
                         low_confidence_dims.append(dim)
                     elif dim == "C":
-                        agg = aggregate_c_dimension(samples_for[dim], n_samples=c_n)
+                        agg = aggregate_c_dimension(samples_for[dim], n_samples=c_n, model=_model_for("C"))
                         dimension_scores["C"] = agg["score"]
                         details["C"] = agg
                         if valid_n < max(1, c_n // 2):

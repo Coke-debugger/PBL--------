@@ -422,43 +422,66 @@ def _root_cause_key(rc: str) -> str:
     return max(chunks, key=len) if chunks else norm
 
 
-def aggregate_c_dimension(samples: list[dict], n_samples: int) -> dict:
-    """C维度专用聚合：根因按关键词簇合并 → 自适应确认门槛 → 按扣分表统一算分。
+def _semantic_dedup_issues(issues: list[dict], model: str) -> list[dict] | None:
+    """用模型对并集 issues 做语义去重：把指同一根因的错误（措辞不同）合并成1个。
 
-    确认门槛自适应（修原本≥2/3过严导致重大错误被滤掉、C虚高5.0的问题）：
-    - 重大知识性错误：门槛=1（任一采样报出即确认）——这类错误（危险操作、定律错）
-      鲜有误报，不应因"只有1次采样注意到"就放过。
-    - 一般性/符号/格式问题：门槛=max(1, 报出该簇的采样数≥2 或 占报错采样数过半)，
-      保留多采样投票以抑制 flash 的随机误报。
+    多次采样常对同一错误用不同措辞各报1次（如"酥油比例矛盾"报5次），字面合并
+    （关键词簇/公共片段）不准。这里调模型一次看完所有 issues，让它判断哪些指同一
+    根因并合并，输出独立错误清单。用模型的语义能力做字面规则做不好的事。
+
+    返回去重后的 issues（每条含 root_cause/error_type/quote/location），失败返回 None
+    （调用方回退到字面合并）。
     """
-    rubric = load_rubric()
-    dedup_table = {d["type"]: d for d in rubric["dimensions"]["C"]["deduction_table"]}
+    if not issues:
+        return []
+    import json as _json
+    # 只传必要字段，减小输入
+    compact = [
+        {"root_cause": str(i.get("root_cause", "")),
+         "error_type": str(i.get("error_type", "")),
+         "quote": str(i.get("quote", ""))[:60]}
+        for i in issues
+    ]
+    prompt = (
+        "以下是对同一份教案多次评审汇总发现的问题清单。其中有些问题指同一个根因（只是措辞不同），"
+        "请把指同一根因的问题合并成1条（取最严重的 error_type，root_cause 用最清晰的一条），"
+        "保留真正独立的不同问题。只输出合并后的清单，不要解释。\n\n"
+        "错误类型档位（严重程度）：重大知识性错误 > 符号/公式实质问题 > 一般性不严谨 > 格式合规问题。\n"
+        "合并时若同一根因被报成不同档位，取最重的档位。\n\n"
+        f"问题清单（共{len(compact)}条）：\n{_json.dumps(compact, ensure_ascii=False, indent=1)}\n\n"
+        "严格输出JSON数组，每条含 root_cause/error_type/quote。只输出JSON。"
+    )
+    try:
+        raw = _call_model(prompt, model=model, temperature=0.0, max_tokens=4096)
+        parsed = _parse_json_object(raw)
+        if isinstance(parsed, list) and parsed:
+            # 补 location（模型输出可能没有，从原 issues 按quote匹配回填）
+            quote_to_loc = {str(i.get("quote", ""))[:60]: i.get("location", "") for i in issues}
+            for item in parsed:
+                if "location" not in item:
+                    item["location"] = quote_to_loc.get(str(item.get("quote", ""))[:60], "")
+            return parsed
+        return None
+    except Exception:
+        return None
 
-    all_issues = []
-    for s in samples:
-        all_issues.extend(s.get("issues", []) or [])
 
-    # 按根因关键词簇合并（用归一化键分组，但输出保留原始 root_cause 文本）
+def _literal_dedup_confirm(all_issues: list[dict], dedup_table: dict) -> list[dict]:
+    """字面合并回退：root_cause 关键词簇 + quote 公共片段并查集合并，取最重档位。
+
+    语义去重失败时用。不如模型语义去重准，但保证有结果。
+    """
+    severity_rank = {"重大知识性错误": 3, "符号/公式实质问题": 2, "一般性不严谨": 1, "格式合规问题": 0}
+    # root_cause 关键词簇
     root_groups: dict[str, list[dict]] = defaultdict(list)
-    root_cause_display: dict[str, str] = {}
     for issue in all_issues:
         key = _root_cause_key(str(issue.get("root_cause", "")))
         if key:
             root_groups[key].append(issue)
-            if key not in root_cause_display:
-                root_cause_display[key] = str(issue.get("root_cause", ""))
-
-    # 按 quote 二次合并：同一处原文引用的错误（措辞不同但指同一问题）并成1个。
-    # 模型常对同一错误用不同 root_cause/quote 措辞报多次（如"酥油比例矛盾"报5次），
-    # 只按根因合并会重复扣。按 quote 归一化后"两两有≥4字公共中文片段就并一组"（传递合并）。
-    severity_rank = {"重大知识性错误": 3, "符号/公式实质问题": 2, "一般性不严谨": 1, "格式合规问题": 0}
-    group_items = list(root_groups.items())  # [(root_key, issues), ...]
-    group_quotes = [
-        _normalize(str(iss[0].get("quote", "")) or k) for k, iss in group_items
-    ]
+    group_items = list(root_groups.items())
+    group_quotes = [_normalize(str(iss[0].get("quote", "")) or k) for k, iss in group_items]
 
     def _common_cn_len(a: str, b: str) -> int:
-        """两串的最长公共连续中文片段长度（数字/标点不计）。"""
         best = 0
         for i in range(len(a)):
             for j in range(len(b)):
@@ -470,7 +493,6 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int) -> dict:
                     best = k
         return best
 
-    # 并查集：公共中文片段≥4字的 group 合并
     n = len(group_items)
     parent = list(range(n))
     def find(x):
@@ -489,25 +511,55 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int) -> dict:
     for idx, (k, iss) in enumerate(group_items):
         quote_groups[find(idx)].extend(iss)
 
-    # 并集扣分：多次采样取并集，同根因+同quote合并为1个错误；任一采样报出即计入，
-    # 每个错误按类型全额扣对应额度（重大2.0/一般0.5/符号0.5），无门槛无加权。
-    # 格式合规问题总扣分封顶1.0（量规规定），其余类型无上限，累加到扣完(到0)为止。
     confirmed = []
     for q_key, issues in quote_groups.items():
-        # 同一quote的多个错误取最重档位（避免同一处既扣重大又扣一般）
         error_types = Counter(i.get("error_type", "") for i in issues)
-        majority_type = error_types.most_common(1)[0][0]
-        # 若该quote同时被判重大和一般，取重的
         best_type = max(error_types.keys(), key=lambda t: severity_rank.get(t, 0))
-        confirmed.append(
-            {
-                "root_cause": str(issues[0].get("root_cause", "")),
-                "error_type": best_type,
-                "quote": issues[0].get("quote", ""),
-                "location": issues[0].get("location", ""),
-                "hit_count": len(issues),
-            }
-        )
+        confirmed.append({
+            "root_cause": str(issues[0].get("root_cause", "")),
+            "error_type": best_type,
+            "quote": issues[0].get("quote", ""),
+            "location": issues[0].get("location", ""),
+            "hit_count": len(issues),
+            "dedup": "literal",
+        })
+    return confirmed
+
+
+def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "") -> dict:
+    """C维度专用聚合：多次采样取并集 → 语义去重（模型合并同义错误）→ 全额扣分。
+
+    规则（用户定）：并集取错误，同根因合并1个，每个错误全额扣对应额度，
+    格式合规封顶1.0，其余无上限，累加到扣完(到0)。
+    去重优先用模型语义去重（_semantic_dedup_issues），失败回退字面合并。
+    """
+    rubric = load_rubric()
+    dedup_table = {d["type"]: d for d in rubric["dimensions"]["C"]["deduction_table"]}
+
+    all_issues = []
+    for s in samples:
+        all_issues.extend(s.get("issues", []) or [])
+
+    # 优先语义去重：调模型把措辞不同但同根因的错误合并。失败回退字面合并。
+    deduped = _semantic_dedup_issues(all_issues, model) if model and all_issues else None
+    if deduped is not None:
+        # 模型去重成功：直接用去重后的清单作为 confirmed
+        confirmed = []
+        for item in deduped:
+            et = str(item.get("error_type", ""))
+            if et not in dedup_table:
+                continue
+            confirmed.append({
+                "root_cause": str(item.get("root_cause", "")),
+                "error_type": et,
+                "quote": str(item.get("quote", "")),
+                "location": str(item.get("location", "")),
+                "hit_count": 1,
+                "dedup": "semantic",
+            })
+    else:
+        # 回退：字面合并（root_cause关键词簇 + quote公共片段）
+        confirmed = _literal_dedup_confirm(all_issues, dedup_table)
 
     total_deduction = 0.0
     format_deduction = 0.0
