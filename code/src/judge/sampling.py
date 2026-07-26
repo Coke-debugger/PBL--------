@@ -28,6 +28,19 @@ from .prompts import build_c_dimension_prompt, build_point_dimension_prompt, loa
 SAMPLE_WORKERS = 14
 
 
+# C 维度聚合口径指纹：集中表达 C 聚合的关键口径。改这里的值会让 _judge_version
+# 变化（见 judge.py._judge_version），从而区分"用不同口径评审器打出的分数"——
+# 对齐附录A"评审器冻结"要求，避免两套口径的分数顶着同一 version 混进同一张表。
+# 注意：只对"口径"敏感（门槛比例/扣分模式/封顶），不对"实现细节"敏感（去重算法
+# 调整不改 version），避免每次小改都让 version 漂移、新旧数据无谓地不可比。
+C_AGGREGATION_PROFILE = {
+    "confirmation_threshold_ratio": 2 / 3,   # 重大错误确认门槛：≥2/3采样报出同一根因才扣（附录A sampling_protocol.aggregation）
+    "threshold_applies_to": ("重大知识性错误", "符号/公式实质问题"),  # 只对重大/符号设门槛；一般/格式维持任一报出就扣
+    "deduction_mode": "union_full",          # 并集去重后每个确认错误全额扣对应额度
+    "format_cap": 1.0,                        # 格式合规问题全文档一次性封顶
+}
+
+
 def _call_model(prompt: str, model: str, temperature: float = 0.0, max_tokens: int = 4096) -> str:
     """通过 llm_client 发起一次调用。供应商/模型切换只需改 configs/api.yaml，
     这里不再硬编码 anthropic 客户端。
@@ -611,11 +624,46 @@ def _literal_dedup_confirm(all_issues: list[dict], dedup_table: dict) -> list[di
     return confirmed
 
 
-def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "", lesson_text: str = "") -> dict:
-    """C维度专用聚合：多次采样取并集 → 语义去重（模型合并同义错误）→ 引用校验 → 全额扣分。
+def _count_issue_support(item: dict, all_issues: list[dict]) -> int:
+    """统计一条语义去重后的错误由几次原始采样报出（用于确认门槛 hit_count）。
 
-    规则（用户定）：并集取错误，同根因合并1个，每个错误全额扣对应额度，
-    格式合规封顶1.0，其余无上限，累加到扣完(到0)。
+    语义去重把 N 条原始 issue 合并成 M 条，但模型返回的合并清单不保留"每条由几条
+    原始 issue 合并"。这里用 quote 归一化匹配关联回原始 issues：去重结果的 quote
+    能在原始 issue 的 quote 里命中（归一化子串或 _quote_matches 宽松匹配），就算
+    1 次支持。命中数即为 hit_count。匹配不上（模型改写 quote 过多）保守记 1——
+    保守方向是"少支持→更难达门槛→倾向不扣"，与确认门槛的保守语义一致。
+    """
+    q = str(item.get("quote", ""))
+    if not q or not all_issues:
+        return 1
+    nq = _normalize(q)
+    if not nq:
+        return 1
+    # 优先精确归一化子串匹配（快），再退宽松匹配（_quote_matches 容忍改写）
+    count = 0
+    for orig in all_issues:
+        oq = _normalize(str(orig.get("quote", "")))
+        if oq and (nq in oq or oq in nq):
+            count += 1
+    if count >= 1:
+        return count
+    for orig in all_issues:
+        oq = str(orig.get("quote", ""))
+        if oq and _quote_matches(oq, nq):
+            count += 1
+    return count if count >= 1 else 1
+
+
+def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "", lesson_text: str = "") -> dict:
+    """C维度专用聚合：多次采样取并集 → 语义去重 → 引用校验 → 确认门槛 → 全额扣分。
+
+    规则（对齐附录A sampling_protocol.aggregation）：
+    - 并集取错误，同根因合并1个，每个确认错误全额扣对应额度，格式合规封顶1.0，
+      其余累加到扣完(到0)。
+    - 确认门槛：'重大知识性错误'与'符号/公式实质问题'须 ≥2/3 采样报出同一根因
+      （hit_count >= ceil(n_samples*2/3)）才进扣分；未达门槛的标 below_threshold
+      不扣分（保留在 confirmed_issues 供人工查阅）。'一般性不严谨'/'格式合规问题'
+      维持任一报出就扣（附录A 只对重大错误要求多采样确认）。
     去重优先用模型语义去重（_semantic_dedup_issues），失败回退字面合并。
     quote 引用校验：引用全不在原文的 issue 不计入扣分（防模型编造错误扣冤枉分）。
     """
@@ -629,7 +677,9 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "", 
     # 优先语义去重：调模型把措辞不同但同根因的错误合并。失败回退字面合并。
     deduped = _semantic_dedup_issues(all_issues, model) if model and all_issues else None
     if deduped is not None:
-        # 模型去重成功：直接用去重后的清单作为 confirmed
+        # 模型去重成功：用去重后的清单作为 confirmed，并按 quote 关联回原始 issues
+        # 回填 hit_count（该根因由几次采样报出）——语义去重本身不保留这个信息，
+        # 没有它则确认门槛无东西可判。匹配不上(模型改写quote过多)保守记1。
         confirmed = []
         for item in deduped:
             et = _normalize_error_type(str(item.get("error_type", "")))
@@ -640,11 +690,11 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "", 
                 "error_type": et,
                 "quote": str(item.get("quote", "")),
                 "location": str(item.get("location", "")),
-                "hit_count": 1,
+                "hit_count": _count_issue_support(item, all_issues),
                 "dedup": "semantic",
             })
     else:
-        # 回退：字面合并（root_cause关键词簇 + quote公共片段）
+        # 回退：字面合并（root_cause关键词簇 + quote公共片段），hit_count=合并条数
         confirmed = _literal_dedup_confirm(all_issues, dedup_table)
 
     # quote 引用校验：引用全不在原文的 issue 不计入扣分（防模型编造错误引用扣冤枉分）。
@@ -662,11 +712,21 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "", 
     # 扣分只算引用能核实的（或无引用可核的）
     deductable = [it for it in verified_confirmed if not it.get("quote_unverified")]
 
+    # 确认门槛：附录A 重大错误须≥2/3采样报出同一根因。ceil(n*2/3)：n=6→4, n=3→2。
+    # 只对重大/符号错误设门槛；一般/格式任一报出就扣。
+    import math as _math
+    threshold = max(1, _math.ceil(n_samples * C_AGGREGATION_PROFILE["confirmation_threshold_ratio"]))
+    threshold_types = set(C_AGGREGATION_PROFILE["threshold_applies_to"])
+
     total_deduction = 0.0
     format_deduction = 0.0
     for item in deductable:
         rule = dedup_table.get(item["error_type"])
         if rule is None:
+            continue
+        # 确认门槛过滤：重大/符号错误 hit_count 不达门槛则不扣
+        if item["error_type"] in threshold_types and item.get("hit_count", 0) < threshold:
+            item["below_threshold"] = True
             continue
         if "cap" in rule:
             # 格式合规问题：累加后封顶 cap（量规规定全文档一次性封顶-1）
@@ -695,6 +755,7 @@ def aggregate_c_dimension(samples: list[dict], n_samples: int, model: str = "", 
         "all_issues": all_issues,
         "has_verifiable_content": has_verifiable,
         "n_valid_samples": len(samples),
+        "confirmation_threshold": threshold,
     }
 
 

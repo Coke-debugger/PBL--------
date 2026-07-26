@@ -345,7 +345,21 @@ class Judge:
         return missing
 
     def _judge_version(self) -> str:
-        """rubric内容的哈希，对齐附录A'评审器冻结'要求——rubric变了这个值就变，
-        方便发现'用了不同版本评审器却混进同一张分数表'的问题。"""
-        payload = json.dumps(self.rubric, sort_keys=True, ensure_ascii=False)
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
+        """rubric内容 + C聚合口径指纹的哈希，对齐附录A'评审器冻结'要求。
+
+        评审器的实际口径横跨两处：rubric_dimensions.json（扣分额度/采样协议文字）
+        和 sampling.py 的 C_AGGREGATION_PROFILE（确认门槛比例/扣分模式等真正落地
+        的口径）。只哈希 rubric 感知不到代码口径改动——历史上"≥2/3门槛"和"并集
+        任一扣"两套评审器曾顶着同一 version 混进同一张表，无法区分。这里把口径
+        指纹一起哈希：改 rubric 或改 C_AGGREGATION_PROFILE 都让 version 变；改
+        sampling.py 的无关实现细节（去重算法调整）不变 version——只对口径敏感，
+        避免每次小改都让新旧数据无谓地不可比。
+        """
+        from .sampling import C_AGGREGATION_PROFILE
+        payload = {
+            "rubric": self.rubric,
+            "c_profile": C_AGGREGATION_PROFILE,
+        }
+        return hashlib.sha256(
+            json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        ).hexdigest()[:12]

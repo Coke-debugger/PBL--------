@@ -81,11 +81,23 @@ def test_aggregate_c_dimension_root_cause_dedup_and_threshold():
         },
     ]
     result = aggregate_c_dimension(samples, n_samples=3)
-    # 燃烧方程式错误命中2/3，达到阈值(3*2/3=2)，应被确认；史实偏差只命中1/3，不应被确认
+    # 确认门槛（附录A）：重大错误须≥2/3采样报出。n=3 阈值=ceil(3*2/3)=2。
+    # 燃烧方程式错误(重大)命中2/3 → 达阈值 → 确认扣2.0。
+    # 史实偏差(一般)只命中1/3，但一般性不严谨不设门槛(任一报出就扣) → 扣0.5。
     root_causes = [i["root_cause"] for i in result["confirmed_issues"]]
     assert "石蜡完全燃烧生成CO而非CO2" in root_causes
-    assert "个别段落史实细节偏差" not in root_causes
-    assert result["score"] == 3.0  # 5 - 2(重大知识性错误) = 3
+    assert "个别段落史实细节偏差" in root_causes  # 一般问题无门槛，进确认清单
+    assert result["score"] == 2.5  # 5 - 2(重大) - 0.5(一般) = 2.5
+    # 重大错误若只1次报出(<阈值2)应被门槛挡住不扣
+    single_major = [
+        {"issues": [{"root_cause": "偶发幻觉错误", "error_type": "重大知识性错误", "quote": "不存在的话术"}], "has_verifiable_content": True},
+        {"issues": [], "has_verifiable_content": True},
+        {"issues": [], "has_verifiable_content": True},
+    ]
+    r2 = aggregate_c_dimension(single_major, n_samples=3, lesson_text="不存在的话术")
+    blocked = [i for i in r2["confirmed_issues"] if i.get("below_threshold")]
+    assert len(blocked) == 1  # 1次报出的重大错误被门槛挡住
+    assert r2["score"] == 5.0  # 未达门槛不扣 → C满分(有可核查内容不封顶)
 
 
 def test_aggregate_c_dimension_floor_clause_no_verifiable_content():
